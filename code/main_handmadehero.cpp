@@ -1,3 +1,5 @@
+#This is my first game from scratch!!
+
 #include <windows.h>
 LRESULT CALLBACK MainWindowCallBack(
 	HWND	Window,

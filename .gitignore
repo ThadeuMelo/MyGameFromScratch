@@ -14,6 +14,17 @@ $RECYCLE.BIN/
 *.msm
 *.msp
 
+# This is a comment
+# Ignore target at the top level
+/build/
+# Ignore child project's targets as well
+/*/build/
+# And any grandchildren ...
+/*/*/build/
+# Or you can do:
+build/
+# which matches 'target' in any sub folder
+
 # =========================
 # Operating System Files
 # =========================
