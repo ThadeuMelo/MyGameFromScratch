@@ -1,27 +1,29 @@
-#This is my first game from scratch!!
+//This is my first game from scratch!!
 
 #include <windows.h>
-LRESULT CALLBACK MainWindowCallBack(
+
+static bool Running;
+LRESULT CALLBACK Win32MainWindowCallBack(
 	HWND	Window,
 	UINT	Message,
 	WPARAM	WParam,
 	LPARAM	LParam
 	);
 	
-LRESULT CreateInitialWindow(HINSTANCE Instance);
+LRESULT Win32CreateInitialWindow(HINSTANCE Instance);
 
-LRESULT CreateInitialWindow(HINSTANCE Instance){
+LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 	WNDCLASS WindowClass = {};
 	//TODO(casey) : Check if
 
 	WindowClass.style = CS_OWNDC|CS_HREDRAW|CS_VREDRAW;
-	WindowClass.lpfnWndProc = MainWindowCallBack;
+	WindowClass.lpfnWndProc = Win32MainWindowCallBack;
 	WindowClass.hInstance = Instance;
 	WindowClass.lpszClassName = "HandmadeHeroWindowClass";
 
 	if (RegisterClass(&WindowClass))
 	{
-		HWND WindowHandler = CreateWindowEx(
+		HWND WindowHandler = CreateWindowExA(
 			0,
 			WindowClass.lpszClassName,
 			"Handmade Hero",
@@ -38,7 +40,7 @@ LRESULT CreateInitialWindow(HINSTANCE Instance){
 		if (WindowHandler)
 		{
 			MSG Message;
-			for (;;){
+			while (Running){
 				BOOL MessageResult = GetMessage(&Message, 0, 0, 0);
 				if (MessageResult > 0)
 				{
@@ -65,7 +67,7 @@ LRESULT CreateInitialWindow(HINSTANCE Instance){
 	return 0;
 }	
 
-LRESULT CALLBACK MainWindowCallBack(
+LRESULT CALLBACK Win32MainWindowCallBack(
 	HWND	Window,
 	UINT	Message,
 	WPARAM	WParam,
@@ -94,14 +96,18 @@ LRESULT CALLBACK MainWindowCallBack(
 			GetClientRect(Window, &ClientRect);
 			int Width = ClientRect.right - ClientRect.left;
 			int Hight = ClientRect.bottom - ClientRect.top;
+			//ResizeDIBSection(Width, Hight);
 			OutputDebugStringA("WM_SIZE\n");
 		} break;
 		case WM_DESTROY:
 		{
+			//TODO: This is a ERRO situation, deal with it!!
+			Running = false;
 			OutputDebugStringA("WM_DESTROY\n");
 		} break;
 		case WM_CLOSE:
 		{
+			Running = false;
 			OutputDebugStringA("WM_CLOSE\n");
 		} break;
 		case WM_ACTIVATEAPP:
@@ -126,7 +132,8 @@ int CALLBACK WinMain(
 	int ShowCode
 	)
 {
-	CreateInitialWindow(Instance);
+	Running = true;
+	Win32CreateInitialWindow(Instance);
 
 	return 0;
 }
