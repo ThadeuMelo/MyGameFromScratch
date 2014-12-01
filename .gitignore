@@ -24,6 +24,10 @@ $RECYCLE.BIN/
 # Or you can do:
 build/
 # which matches 'target' in any sub folder
+\build\
+\*\build\
+\*\*\build\
+build\
 
 # =========================
 # Operating System Files
