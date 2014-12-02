@@ -9,7 +9,7 @@
 global_variable bool Running;
 global_variable BITMAPINFO BitMapInfo;
 global_variable void *BitMapMemory;
-global_variable int BitMapWidth, BitMapHight;
+global_variable int BitMapWidth, BitMapHeight;
 
 LRESULT CALLBACK Win32MainWindowCallBack(
 	HWND	Window,
@@ -22,14 +22,20 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance);
 
 internal void Win32ResizeDIBSection(int, int);
 
-internal void Win32UpdateWindow(HDC DeviceContext, RECT *WindowRect, int X, int Y, int Width, int Hight);
+internal void Win32UpdateWindow(HDC DeviceContext, RECT *WindowRect, int X, int Y, int Width, int Height);
 
-internal void Win32UpdateWindow(HDC DeviceContext, RECT *WindowRect, int X, int Y, int Width, int Hight)
+internal void Win32UpdateWindow(HDC DeviceContext, RECT *WindowRect, int X, int Y, int Width, int Height)
 {
+	int WindowWidth = WindowRect->right - WindowRect->left;
+	int WindowHeight = WindowRect->bottom - WindowRect->top;
 	StretchDIBits(	DeviceContext,
-		X, Y, Width, Hight,
-		X, Y, Width, Hight,
-		BitMapMemory,
+	/*
+		X, Y, Width, Height,
+		X, Y, Width, Height,
+	*/
+		0,0, BitMapWidth, BitMapHeight,
+		0,0, WindowWidth, WindowHeight
+		BitMapMemory,WindowHight
 		&BitMapInfo,
 		DIB_RGB_COLORS,
 		SRCCOPY
@@ -37,7 +43,7 @@ internal void Win32UpdateWindow(HDC DeviceContext, RECT *WindowRect, int X, int 
 
 }
 
-internal void Win32ResizeDIBSection(int Width, int Hight)
+internal void Win32ResizeDIBSection(int Width, int Height)
 {
 	
 	if(BitMapMemory)
@@ -45,11 +51,11 @@ internal void Win32ResizeDIBSection(int Width, int Hight)
 		VirtualFree(BitMapMemory, NULL, MEM_RELEASE);
 	}
 	BitMapWidth = Width;
-	BitMapHight = Hight;
+	BitMapHeight = Height;
 	
 	BitMapInfo.bmiHeader.biSize = sizeof(BitMapInfo.bmiHeader);
-	BitMapInfo.bmiHeader.biHeight = Hight;
-	BitMapInfo.bmiHeader.biWidth = Width;
+	BitMapInfo.bmiHeader.biHeight = -BitMapHeight;
+	BitMapInfo.bmiHeader.biWidth = BitMapWidth;
 	BitMapInfo.bmiHeader.biPlanes = 1;
 	BitMapInfo.bmiHeader.biBitCount = 32; //24 RGB and 8 for pading 
 	BitMapInfo.bmiHeader.biCompression = BI_RGB;
@@ -136,10 +142,10 @@ LRESULT CALLBACK Win32MainWindowCallBack(
 			HDC DeviceContext = BeginPaint(Window, &Paint);
 			int X = Paint.rcPaint.left;
 			int Y = Paint.rcPaint.top;
-			int Hight = Paint.rcPaint.bottom - Paint.rcPaint.top;
-			int Width = Paint.rcPaint.right - Paint.rcPaint.left;
+			int Height = Paint.rcPaint.bottom - Paint.rcPaint.top;
+			int Weidth = Paint.rcPaint.right - Paint.rcPaint.left;
 			
-			Win32UpdateWindow(DeviceContext, X, Y, Width, Hight);
+			Win32UpdateWindow(DeviceContext, X, Y, Width, Height);
 			EndPaint(Window, &Paint);
 		} break;
 		case WM_SIZE:
