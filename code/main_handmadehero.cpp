@@ -9,8 +9,7 @@
 global_variable bool Running;
 global_variable BITMAPINFO BitMapInfo;
 global_variable void *BitMapMemory;
-global_variable HBITMAP BitMapHandle;
-global_variable HDC BitMapDeviceContext;
+global_variable int BitMapWidth, BitMapHight;
 
 LRESULT CALLBACK Win32MainWindowCallBack(
 	HWND	Window,
@@ -23,9 +22,9 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance);
 
 internal void Win32ResizeDIBSection(int, int);
 
-internal void Win32UpdateWindow(HDC DeviceContext, int X, int Y, int Width, int Hight);
+internal void Win32UpdateWindow(HDC DeviceContext, RECT *WindowRect, int X, int Y, int Width, int Hight);
 
-internal void Win32UpdateWindow(HDC DeviceContext, int X, int Y, int Width, int Hight)
+internal void Win32UpdateWindow(HDC DeviceContext, RECT *WindowRect, int X, int Y, int Width, int Hight)
 {
 	StretchDIBits(	DeviceContext,
 		X, Y, Width, Hight,
@@ -40,31 +39,25 @@ internal void Win32UpdateWindow(HDC DeviceContext, int X, int Y, int Width, int 
 
 internal void Win32ResizeDIBSection(int Width, int Hight)
 {
-	//TODO(thadeu): Free our DIB Section
-
-	if (BitMapHandle)
+	
+	if(BitMapMemory)
 	{
-		DeleteObject(BitMapHandle);
+		VirtualFree(BitMapMemory, NULL, MEM_RELEASE);
 	}
-	if (!BitMapDeviceContext)
-	{
-		BitMapDeviceContext = CreateCompatibleDC(0);
-	}
-
+	BitMapWidth = Width;
+	BitMapHight = Hight;
+	
 	BitMapInfo.bmiHeader.biSize = sizeof(BitMapInfo.bmiHeader);
 	BitMapInfo.bmiHeader.biHeight = Hight;
 	BitMapInfo.bmiHeader.biWidth = Width;
 	BitMapInfo.bmiHeader.biPlanes = 1;
-	BitMapInfo.bmiHeader.biBitCount = 32;
+	BitMapInfo.bmiHeader.biBitCount = 32; //24 RGB and 8 for pading 
 	BitMapInfo.bmiHeader.biCompression = BI_RGB;
 
-
-	BitMapHandle = CreateDIBSection(BitMapDeviceContext,
-									&BitMapInfo,
-									DIB_RGB_COLORS,
-									&BitMapMemory,
-									0,
-									0);
+	int BytesPerPixel = 4; 
+	int BitMapMemSize = (Hight*Width)*BytesPerPixel;
+	
+	BitMapMemory = VirtualAlloc(NULL, BitMapMemSize, MEM_COMMIT, PAGE_READWRITE);
 
 }
 
