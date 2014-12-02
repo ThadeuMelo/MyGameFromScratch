@@ -1,10 +1,16 @@
 //This is my first game from scratch!!
 
 #include <windows.h>
+#include <stdint.h>
 
 #define local_persist static
 #define global_variable static
 #define internal static
+
+typedef uint8_t uint8;
+typedef uint16_t uint16;
+typedef uint32_t uint32;
+typedef uint64_t uint64;
 
 global_variable bool Running;
 global_variable BITMAPINFO BitMapInfo;
@@ -61,10 +67,22 @@ internal void Win32ResizeDIBSection(int Width, int Height)
 	BitMapInfo.bmiHeader.biCompression = BI_RGB;
 
 	int BytesPerPixel = 4; 
-	int BitMapMemSize = (Hight*Width)*BytesPerPixel;
+	int BitMapMemSize = (Height*Width)*BytesPerPixel;
 	
 	BitMapMemory = VirtualAlloc(NULL, BitMapMemSize, MEM_COMMIT, PAGE_READWRITE);
-
+	
+	int Pitch = Width*BytesPerPixel;
+	uint8 *Row = (uint8 *) BitMapMemory;
+	
+	for(int Y = 0; Y < BitMapHeight; ++Y)
+	{
+		uint32 *Pixel = (uint32) Row;
+		for(int X = 0; X < BitMapWidth; ++X)
+		{
+			
+		}
+		Row += Pitch;
+	}
 }
 
 
@@ -144,6 +162,9 @@ LRESULT CALLBACK Win32MainWindowCallBack(
 			int Y = Paint.rcPaint.top;
 			int Height = Paint.rcPaint.bottom - Paint.rcPaint.top;
 			int Weidth = Paint.rcPaint.right - Paint.rcPaint.left;
+			
+			RECT ClientRect;
+			GetClientRect(Window, &ClientRect);
 			
 			Win32UpdateWindow(DeviceContext, X, Y, Width, Height);
 			EndPaint(Window, &Paint);
