@@ -16,6 +16,7 @@ global_variable bool Running;
 global_variable BITMAPINFO BitMapInfo;
 global_variable void *BitMapMemory;
 global_variable int BitMapWidth, BitMapHeight;
+global_variable int BytesPerPixel = 4; 
 
 LRESULT CALLBACK Win32MainWindowCallBack(
 	HWND	Window,
@@ -30,6 +31,46 @@ internal void Win32ResizeDIBSection(int, int);
 
 internal void Win32UpdateWindow(HDC DeviceContext, RECT *WindowRect, int X, int Y, int Width, int Height);
 
+internal void RenderWierdGradient(int XOffSet, int YOffSet)
+{
+	int Width = BitMapWidth;
+	int Height = BitMapHeight;
+	
+	int Pitch = Width*BytesPerPixel;
+	uint8 *Row = (uint8 *) BitMapMemory;
+	
+	for(int Y = 0; Y < BitMapHeight; ++Y)
+	{
+		uint8 *Pixel = (uint8 *) Row;
+		for(int X = 0; X < BitMapWidth; ++X)
+		{
+			if(X <(Width/2))
+			{
+				*Pixel = (uint8)(Y - XOffSet);
+				Pixel++;
+				*Pixel = (uint8)(X + YOffSet);
+				Pixel++;
+				*Pixel = 0;
+				Pixel++;
+				*Pixel = 0;
+				Pixel++;
+			}
+			else
+			{
+				*Pixel = 0;
+				Pixel++;
+				*Pixel = (uint8)(Y + XOffSet);
+				Pixel++;
+				*Pixel = (uint8)(X + YOffSet);
+				Pixel++;
+				*Pixel = 0;
+				Pixel++;
+			}
+		}
+		Row += Pitch;
+	}
+}
+
 internal void Win32UpdateWindow(HDC DeviceContext, RECT *WindowRect, int X, int Y, int Width, int Height)
 {
 	int WindowWidth = WindowRect->right - WindowRect->left;
@@ -40,8 +81,8 @@ internal void Win32UpdateWindow(HDC DeviceContext, RECT *WindowRect, int X, int 
 		X, Y, Width, Height,
 	*/
 		0,0, BitMapWidth, BitMapHeight,
-		0,0, WindowWidth, WindowHeight
-		BitMapMemory,WindowHight
+		0,0, WindowWidth, WindowHeight,
+		BitMapMemory,
 		&BitMapInfo,
 		DIB_RGB_COLORS,
 		SRCCOPY
@@ -60,29 +101,18 @@ internal void Win32ResizeDIBSection(int Width, int Height)
 	BitMapHeight = Height;
 	
 	BitMapInfo.bmiHeader.biSize = sizeof(BitMapInfo.bmiHeader);
-	BitMapInfo.bmiHeader.biHeight = -BitMapHeight;
+	BitMapInfo.bmiHeader.biHeight = - BitMapHeight;
 	BitMapInfo.bmiHeader.biWidth = BitMapWidth;
 	BitMapInfo.bmiHeader.biPlanes = 1;
 	BitMapInfo.bmiHeader.biBitCount = 32; //24 RGB and 8 for pading 
 	BitMapInfo.bmiHeader.biCompression = BI_RGB;
 
-	int BytesPerPixel = 4; 
+
 	int BitMapMemSize = (Height*Width)*BytesPerPixel;
 	
 	BitMapMemory = VirtualAlloc(NULL, BitMapMemSize, MEM_COMMIT, PAGE_READWRITE);
 	
-	int Pitch = Width*BytesPerPixel;
-	uint8 *Row = (uint8 *) BitMapMemory;
 	
-	for(int Y = 0; Y < BitMapHeight; ++Y)
-	{
-		uint32 *Pixel = (uint32) Row;
-		for(int X = 0; X < BitMapWidth; ++X)
-		{
-			
-		}
-		Row += Pitch;
-	}
 }
 
 
@@ -98,7 +128,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 
 	if (RegisterClass(&WindowClass))
 	{
-		HWND WindowHandler = CreateWindowExA(
+		HWND Window = CreateWindowExA(
 			0,
 			WindowClass.lpszClassName,
 			"Handmade Hero",
@@ -112,21 +142,34 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 			Instance,
 			0
 			);
-		if (WindowHandler)
+		if (Window)
 		{
 			MSG Message;
 			Running = true;
+			uint8 XOffset = 0;
+			uint8 YOffset = 0;
 			while (Running){
-				BOOL MessageResult = GetMessage(&Message, 0, 0, 0);
-				if (MessageResult > 0)
+				while(PeekMessage( &Message,  0,0,0, PM_REMOVE)) 
 				{
+					if(Message.message == WM_QUIT)
+					{
+						Running = false;
+					}
 					TranslateMessage(&Message);
-					DispatchMessage(&Message);
+					DispatchMessage(&Message);				
 				}
-				else
-				{
-					break;
-				}
+				
+				RenderWierdGradient(XOffset, YOffset);
+				RECT ClientRect;
+				HDC DeviceContext = GetDC(Window);
+				GetClientRect(Window, &ClientRect);
+				int Width = ClientRect.right - ClientRect.left;
+				int Height = ClientRect.bottom - ClientRect.top;
+				Win32UpdateWindow(DeviceContext, &ClientRect, XOffset, YOffset, Width, Height);
+				ReleaseDC(Window, DeviceContext);
+				XOffset++;
+				YOffset--;
+
 			}
 
 		}
@@ -161,12 +204,12 @@ LRESULT CALLBACK Win32MainWindowCallBack(
 			int X = Paint.rcPaint.left;
 			int Y = Paint.rcPaint.top;
 			int Height = Paint.rcPaint.bottom - Paint.rcPaint.top;
-			int Weidth = Paint.rcPaint.right - Paint.rcPaint.left;
+			int Width = Paint.rcPaint.right - Paint.rcPaint.left;
 			
 			RECT ClientRect;
 			GetClientRect(Window, &ClientRect);
-			
-			Win32UpdateWindow(DeviceContext, X, Y, Width, Height);
+			RenderWierdGradient(0,0);
+			Win32UpdateWindow(DeviceContext, &ClientRect, X, Y, Width, Height);
 			EndPaint(Window, &Paint);
 		} break;
 		case WM_SIZE:
