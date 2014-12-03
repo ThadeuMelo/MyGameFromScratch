@@ -88,27 +88,27 @@ internal void Win32UpdateWindow(HDC DeviceContext, RECT ClientRect, int X, int Y
 }
 
 internal void 
-Win32ResizeDIBSection(Win32_Off_Screen_Buffer Buffer, int Width, int Height)
+Win32ResizeDIBSection(Win32_Off_Screen_Buffer *Buffer, int Width, int Height)
 {
 	
 	if(Buffer.Memory)
 	{
-		VirtualFree(Buffer.BitMapMemory, NULL, MEM_RELEASE);
+		VirtualFree(Buffer->BitMapMemory, NULL, MEM_RELEASE);
 	}
-	Buffer.Width = Width;
-	Buffer.Height = Height;
+	Buffer->Width = Width;
+	Buffer->Height = Height;
 	
-	Buffer.Info.bmiHeader.biSize = sizeof(Buffer.Info.bmiHeader);
-	Buffer.Info.bmiHeader.biHeight = - Buffer.Height;
-	Buffer.Info.bmiHeader.biWidth = Buffer.Width;
-	Buffer.Info.bmiHeader.biPlanes = 1;
-	Buffer.Info.bmiHeader.biBitCount = 32; //24 RGB and 8 for pading 
-	Buffer.Info.bmiHeader.biCompression = BI_RGB;
-
+	Buffer->Info.bmiHeader.biSize = sizeof(Buffer->Info.bmiHeader);
+	Buffer->Info.bmiHeader.biHeight = - Buffer->Height;
+	Buffer->Info.bmiHeader.biWidth = Buffer->Width;
+	Buffer->Info.bmiHeader.biPlanes = 1;
+	Buffer->Info.bmiHeader.biBitCount = 32; //24 RGB and 8 for pading 
+	Buffer->Info.bmiHeader.biCompression = BI_RGB;
+->
 
 	int BitMapMemSize = (Height*Width)*(Buffer.BytesPerPixel);
 	
-	Buffer.Memory = VirtualAlloc(NULL, BitMapMemSize, MEM_COMMIT, PAGE_READWRITE);
+	Buffer->Memory = VirtualAlloc(NULL, BitMapMemSize, MEM_COMMIT, PAGE_READWRITE);
 	
 	
 }
