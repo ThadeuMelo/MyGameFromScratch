@@ -13,10 +13,14 @@ typedef uint32_t uint32;
 typedef uint64_t uint64;
 
 global_variable bool Running;
-global_variable BITMAPINFO BitMapInfo;
-global_variable void *BitMapMemory;
-global_variable int BitMapWidth, BitMapHeight;
-global_variable int BytesPerPixel = 4; 
+
+struct Win32_Off_Screen_Buffer
+{
+	 BITMAPINFO Info;
+	 void *Memory;
+	 int Width, Height;
+	 int BytesPerPixel = 4; 
+};
 
 LRESULT CALLBACK Win32MainWindowCallBack(
 	HWND	Window,
@@ -29,20 +33,20 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance);
 
 internal void Win32ResizeDIBSection(int, int);
 
-internal void Win32UpdateWindow(HDC DeviceContext, RECT *WindowRect, int X, int Y, int Width, int Height);
+internal void Win32UpdateWindow(HDC DeviceContext, RECT ClientRect, int X, int Y, int Width, int Height);
 
-internal void RenderWierdGradient(int XOffset, int YOffset)
+internal void RenderWierdGradient(Win32_Off_Screen_Buffer *Buffer, int XOffset, int YOffset)
 {
-	int Width = BitMapWidth;
-	int Height = BitMapHeight;
+	int Width = Buffer->Width;
+	int Height = Buffer->Height;
 	
-	int Pitch = Width*BytesPerPixel;
-	uint8 *Row = (uint8 *) BitMapMemory;
+	int Pitch = Width*(Buffer->BytesPerPixel);
+	uint8 *Row = (uint8 *) Buffer->Memory;
 	
-	for(int Y = 0; Y < BitMapHeight; ++Y)
+	for(int Y = 0; Y < Buffer->Height; ++Y)
 	{
 		uint32 *Pixel = (uint32 *) Row;
-		for(int X = 0; X < BitMapWidth; ++X)
+		for(int X = 0; X < Buffer->Width; ++X)
 		{
 			uint8 Blue ;
 			uint8 Green ;
@@ -63,10 +67,10 @@ internal void RenderWierdGradient(int XOffset, int YOffset)
 	}
 }
 
-internal void Win32UpdateWindow(HDC DeviceContext, RECT *WindowRect, int X, int Y, int Width, int Height)
+internal void Win32UpdateWindow(HDC DeviceContext, RECT ClientRect, int X, int Y, int Width, int Height)
 {
-	int WindowWidth = WindowRect->right - WindowRect->left;
-	int WindowHeight = WindowRect->bottom - WindowRect->top;
+	int WindowWidth = ClientRect.right - ClientRect.left;
+	int WindowHeight = ClientRect.bottom - ClientRect.top;
 	StretchDIBits(	DeviceContext,
 	/*
 		X, Y, Width, Height,
@@ -136,11 +140,11 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 			);
 		if (Window)
 		{
-			MSG Message;
 			Running = true;
 			uint8 XOffset = 0;
 			uint8 YOffset = 0;
 			while (Running){
+				MSG Message;
 				while(PeekMessage( &Message,  0,0,0, PM_REMOVE)) 
 				{
 					if(Message.message == WM_QUIT)
@@ -157,7 +161,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				GetClientRect(Window, &ClientRect);
 				int Width = ClientRect.right - ClientRect.left;
 				int Height = ClientRect.bottom - ClientRect.top;
-				Win32UpdateWindow(DeviceContext, &ClientRect, XOffset, YOffset, Width, Height);
+				Win32UpdateWindow(DeviceContext, ClientRect, XOffset, YOffset, Width, Height);
 				ReleaseDC(Window, DeviceContext);
 				XOffset++;
 				YOffset--;
@@ -201,7 +205,7 @@ LRESULT CALLBACK Win32MainWindowCallBack(
 			RECT ClientRect;
 			GetClientRect(Window, &ClientRect);
 			RenderWierdGradient(0,0);
-			Win32UpdateWindow(DeviceContext, &ClientRect, X, Y, Width, Height);
+			Win32UpdateWindow(DeviceContext, ClientRect, X, Y, Width, Height);
 			EndPaint(Window, &Paint);
 		} break;
 		case WM_SIZE:
