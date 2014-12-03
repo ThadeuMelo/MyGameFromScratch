@@ -7,6 +7,8 @@
 #define global_variable static
 #define internal static
 
+#define PIXEL_BIT_COUNT 32
+
 typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
@@ -102,9 +104,8 @@ Win32ResizeDIBSection(Win32_Off_Screen_Buffer *Buffer, int Width, int Height)
 	Buffer->Info.bmiHeader.biHeight = - Buffer->Height;
 	Buffer->Info.bmiHeader.biWidth = Buffer->Width;
 	Buffer->Info.bmiHeader.biPlanes = 1;
-	Buffer->Info.bmiHeader.biBitCount = 32; //24 RGB and 8 for pading 
+	Buffer->Info.bmiHeader.biBitCount = PIXEL_BIT_COUNT; //24 RGB and 8 for pading 
 	Buffer->Info.bmiHeader.biCompression = BI_RGB;
-->
 
 	int BitMapMemSize = (Height*Width)*(Buffer.BytesPerPixel);
 	
