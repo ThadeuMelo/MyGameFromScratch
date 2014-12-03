@@ -18,7 +18,9 @@ struct Win32_Off_Screen_Buffer
 {
 	 BITMAPINFO Info;
 	 void *Memory;
-	 int Width, Height;
+	 int Width,
+	 int Height;
+	 int Pitch;
 	 int BytesPerPixel = 4; 
 };
 
@@ -35,24 +37,23 @@ internal void Win32ResizeDIBSection(int, int);
 
 internal void Win32UpdateWindow(HDC DeviceContext, RECT ClientRect, int X, int Y, int Width, int Height);
 
-internal void RenderWierdGradient(Win32_Off_Screen_Buffer *Buffer, int XOffset, int YOffset)
+internal void RenderWierdGradient(Win32_Off_Screen_Buffer Buffer, int XOffset, int YOffset)
 {
-	int Width = Buffer->Width;
-	int Height = Buffer->Height;
+
 	
-	int Pitch = Width*(Buffer->BytesPerPixel);
-	uint8 *Row = (uint8 *) Buffer->Memory;
+	int Pitch = Buffer.Width*(Buffer.BytesPerPixel);
+	uint8 *Row = (uint8 *) Buffer.Memory;
 	
-	for(int Y = 0; Y < Buffer->Height; ++Y)
+	for(int Y = 0; Y < Buffer.Height; ++Y)
 	{
 		uint32 *Pixel = (uint32 *) Row;
-		for(int X = 0; X < Buffer->Width; ++X)
+		for(int X = 0; X < Buffer.Width; ++X)
 		{
 			uint8 Blue ;
 			uint8 Green ;
 			uint8 Red = 0;
 			
-			if (X > Width/2){
+			if (X > Buffer.Width/2){
 				Blue = 0;
 				Red = (X + XOffset);
 			}else
@@ -86,27 +87,28 @@ internal void Win32UpdateWindow(HDC DeviceContext, RECT ClientRect, int X, int Y
 
 }
 
-internal void Win32ResizeDIBSection(int Width, int Height)
+internal void 
+Win32ResizeDIBSection(Win32_Off_Screen_Buffer Buffer, int Width, int Height)
 {
 	
-	if(BitMapMemory)
+	if(Buffer.Memory)
 	{
-		VirtualFree(BitMapMemory, NULL, MEM_RELEASE);
+		VirtualFree(Buffer.BitMapMemory, NULL, MEM_RELEASE);
 	}
-	BitMapWidth = Width;
-	BitMapHeight = Height;
+	Buffer.Width = Width;
+	Buffer.Height = Height;
 	
-	BitMapInfo.bmiHeader.biSize = sizeof(BitMapInfo.bmiHeader);
-	BitMapInfo.bmiHeader.biHeight = - BitMapHeight;
-	BitMapInfo.bmiHeader.biWidth = BitMapWidth;
-	BitMapInfo.bmiHeader.biPlanes = 1;
-	BitMapInfo.bmiHeader.biBitCount = 32; //24 RGB and 8 for pading 
-	BitMapInfo.bmiHeader.biCompression = BI_RGB;
+	Buffer.Info.bmiHeader.biSize = sizeof(Buffer.Info.bmiHeader);
+	Buffer.Info.bmiHeader.biHeight = - Buffer.Height;
+	Buffer.Info.bmiHeader.biWidth = Buffer.Width;
+	Buffer.Info.bmiHeader.biPlanes = 1;
+	Buffer.Info.bmiHeader.biBitCount = 32; //24 RGB and 8 for pading 
+	Buffer.Info.bmiHeader.biCompression = BI_RGB;
 
 
-	int BitMapMemSize = (Height*Width)*BytesPerPixel;
+	int BitMapMemSize = (Height*Width)*(Buffer.BytesPerPixel);
 	
-	BitMapMemory = VirtualAlloc(NULL, BitMapMemSize, MEM_COMMIT, PAGE_READWRITE);
+	Buffer.Memory = VirtualAlloc(NULL, BitMapMemSize, MEM_COMMIT, PAGE_READWRITE);
 	
 	
 }
