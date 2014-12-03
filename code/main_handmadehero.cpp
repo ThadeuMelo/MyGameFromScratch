@@ -31,7 +31,7 @@ internal void Win32ResizeDIBSection(int, int);
 
 internal void Win32UpdateWindow(HDC DeviceContext, RECT *WindowRect, int X, int Y, int Width, int Height);
 
-internal void RenderWierdGradient(int XOffSet, int YOffSet)
+internal void RenderWierdGradient(int XOffset, int YOffset)
 {
 	int Width = BitMapWidth;
 	int Height = BitMapHeight;
@@ -41,31 +41,23 @@ internal void RenderWierdGradient(int XOffSet, int YOffSet)
 	
 	for(int Y = 0; Y < BitMapHeight; ++Y)
 	{
-		uint8 *Pixel = (uint8 *) Row;
+		uint32 *Pixel = (uint32 *) Row;
 		for(int X = 0; X < BitMapWidth; ++X)
 		{
-			if(X <(Width/2))
+			uint8 Blue ;
+			uint8 Green ;
+			uint8 Red = 0;
+			
+			if (X > Width/2){
+				Blue = 0;
+				Red = (X + XOffset);
+			}else
 			{
-				*Pixel = (uint8)(Y - XOffSet);
-				Pixel++;
-				*Pixel = (uint8)(X + YOffSet);
-				Pixel++;
-				*Pixel = 0;
-				Pixel++;
-				*Pixel = 0;
-				Pixel++;
+				Blue = (X + XOffset);
+				Green = (Y + YOffset);
+				Red = 0;
 			}
-			else
-			{
-				*Pixel = 0;
-				Pixel++;
-				*Pixel = (uint8)(Y + XOffSet);
-				Pixel++;
-				*Pixel = (uint8)(X + YOffSet);
-				Pixel++;
-				*Pixel = 0;
-				Pixel++;
-			}
+			*Pixel++ = ((Red<<16)|(Green<<8)|Blue);
 		}
 		Row += Pitch;
 	}
