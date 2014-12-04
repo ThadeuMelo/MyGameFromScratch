@@ -98,8 +98,9 @@ RenderWierdGradient(Win32_Off_Screen_Buffer Buffer, int XOffset, int YOffset)
 }
 
 internal void 
-Win32UpdateWindow(	Win32_Off_Screen_Buffer Buffer,	HDC DeviceContext,
+Win32UpdateWindow(	HDC DeviceContext,
 					int WindowWidth, int WindowHeight,
+					Win32_Off_Screen_Buffer Buffer,
 					int X, int Y, int Width, int Height)
 {
 
@@ -108,8 +109,8 @@ Win32UpdateWindow(	Win32_Off_Screen_Buffer Buffer,	HDC DeviceContext,
 		X, Y, Width, Height,
 		X, Y, Width, Height,
 	*/
-		0,0, Buffer.Width, Buffer.Height,
 		0, 0, WindowWidth, WindowHeight,
+		0, 0, Buffer.Width, Buffer.Height,
 		Buffer.Memory,
 		&Buffer.Info,
 		DIB_RGB_COLORS,
@@ -190,7 +191,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				RenderWierdGradient(GlobalBackBuffer, XOffset, YOffset);
 				HDC DeviceContext = GetDC(Window);
 				Win32_Window_Dimension Dimensiton = Win32GetWindowDimension(Window);
-				Win32UpdateWindow(GlobalBackBuffer, DeviceContext, Dimensiton.Width, Dimensiton.Height, 0, 0, Dimensiton.Width, Dimensiton.Height);
+				Win32UpdateWindow(DeviceContext, Dimensiton.Width, Dimensiton.Height, GlobalBackBuffer, 0, 0, Dimensiton.Width, Dimensiton.Height);
 				ReleaseDC(Window, DeviceContext);
 				XOffset++;
 				YOffset--;
@@ -219,6 +220,8 @@ LRESULT CALLBACK Win32MainWindowCallBack(
 	)
 {
 	LRESULT Result = 0;
+	Win32_Window_Dimension Dimension = Win32GetWindowDimension(Window);
+	Win32ResizeDIBSection(&GlobalBackBuffer, 1200, 720);
 	
 	switch(Message)
 	{
@@ -233,13 +236,11 @@ LRESULT CALLBACK Win32MainWindowCallBack(
 			
 			Win32_Window_Dimension Dimension = Win32GetWindowDimension(Window);
 			RenderWierdGradient(GlobalBackBuffer, Width, Height);
-			Win32UpdateWindow(GlobalBackBuffer, DeviceContext,Dimension.Width, Dimension.Height, X, Y, Width, Height);
+			Win32UpdateWindow(DeviceContext, Dimension.Width, Dimension.Height, GlobalBackBuffer, X, Y, Width, Height);
 			EndPaint(Window, &Paint);
 		} break;
 		case WM_SIZE:
 		{
-			Win32_Window_Dimension Dimension = Win32GetWindowDimension(Window);
-			Win32ResizeDIBSection(&GlobalBackBuffer, Dimension.Width, Dimension.Height);
 			OutputDebugStringA("WM_SIZE\n");
 		} break;
 		case WM_DESTROY:
