@@ -104,23 +104,23 @@ Win32GetWindowDimension(HWND Window)
 
 
 internal void 
-RenderWierdGradient(Win32_Off_Screen_Buffer Buffer, int XOffset, int YOffset)
+RenderWierdGradient(Win32_Off_Screen_Buffer *Buffer, int XOffset, int YOffset)
 {
 
 	
-	int Pitch = Buffer.Width*(BYTES_PER_PIXEL);
-	uint8 *Row = (uint8 *) Buffer.Memory;
+	int Pitch = Buffer->Width*(BYTES_PER_PIXEL);
+	uint8 *Row = (uint8 *) Buffer->Memory;
 	
-	for(int Y = 0; Y < Buffer.Height; ++Y)
+	for(int Y = 0; Y < Buffer->Height; ++Y)
 	{
 		uint32 *Pixel = (uint32 *) Row;
-		for(int X = 0; X < Buffer.Width; ++X)
+		for(int X = 0; X < Buffer->Width; ++X)
 		{
 			uint8 Blue ;
 			uint8 Green ;
 			uint8 Red = 0;
 			
-			if (X > Buffer.Width/2){
+			if (X > Buffer->Width/2){
 				Blue = 0;
 				Red = (X + XOffset);
 			}else
@@ -136,16 +136,15 @@ RenderWierdGradient(Win32_Off_Screen_Buffer Buffer, int XOffset, int YOffset)
 }
 
 internal void 
-Win32UpdateWindow(	HDC DeviceContext,
-					int WindowWidth, int WindowHeight,
-					Win32_Off_Screen_Buffer Buffer)
+Win32UpdateWindow(	Win32_Off_Screen_Buffer &Buffer, HDC DeviceContext,
+					int WindowWidth, int WindowHeight)
 {
 
 	StretchDIBits(	DeviceContext,
 		0, 0, WindowWidth, WindowHeight,
 		0, 0, Buffer.Width, Buffer.Height,
-		Buffer.Memory,
-		&Buffer.Info,
+		Buffer->Memory,
+		&Buffer->Info,
 		DIB_RGB_COLORS,
 		SRCCOPY
 		);
@@ -281,10 +280,10 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				Vibration.wRightMotorSpeed = 0;
 
 				XInputSetState(0, &Vibration);
-				RenderWierdGradient(GlobalBackBuffer, XOffset, YOffset);
+				RenderWierdGradient(&GlobalBackBuffer, XOffset, YOffset);
 
 				Win32_Window_Dimension Dimensiton = Win32GetWindowDimension(Window);
-				Win32UpdateWindow(DeviceContext, Dimensiton.Width, Dimensiton.Height, GlobalBackBuffer);
+				Win32UpdateWindow(&GlobalBackBuffer, DeviceContext, Dimensiton.Width, Dimensiton.Height);
 
 
 
