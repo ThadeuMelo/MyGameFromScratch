@@ -58,13 +58,11 @@ struct ButtonActions
 
 global_variable Win32_Off_Screen_Buffer GlobalBackBuffer;
 
-
-
 #define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex,  XINPUT_STATE* pState)
 typedef X_INPUT_GET_STATE(x_input_get_state);
 X_INPUT_GET_STATE(XInputGetStateStub)
 {
-	return 0;
+	return ERROR_DEVICE_NOT_CONNECTED;
 }
 global_variable x_input_get_state *XInputGetState_ = XInputGetStateStub;
 #define XInputGetState XInputGetState_
@@ -73,7 +71,7 @@ global_variable x_input_get_state *XInputGetState_ = XInputGetStateStub;
 typedef X_INPUT_SET_STATE(x_input_set_state);
 X_INPUT_SET_STATE(XInputSetStateStub)
 {
-	return 0;
+	return ERROR_DEVICE_NOT_CONNECTED;
 }
 global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
 #define XInputSetState XInputSetState_
@@ -118,8 +116,12 @@ internal ButtonActions getButtonAction(XINPUT_GAMEPAD *Pad)
 internal void 
 Wind32LoadXInput(void)
 {
-	HMODULE XInputLibray = LoadLibrary("xinput1_3.dll");
-	if (XInputLibray)
+	HMODULE XInputLibrary = LoadLibrary("xinput1_4.dll");
+	if(!XInputLibrary)
+	{
+		XInputLibrary = LoadLibrary("xinput1_3.dll");
+	}
+	if (XInputLibrary)
 	{
 		XInputGetState = (x_input_get_state *)GetProcAddress(XInputLibray, "XInputGetState");
 		XInputSetState = (x_input_set_state *)GetProcAddress(XInputLibray, "XInputSetState");
