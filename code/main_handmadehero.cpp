@@ -39,6 +39,23 @@ struct Win32_Window_Dimension
 	int Height;
 };
 
+struct ButtonActions
+{
+	bool Up;
+	bool Down;
+	bool Left;
+	bool Right; 
+	bool ButA;
+	bool ButB;
+	bool ButX;
+	bool ButY;
+	bool LeftSh;
+	bool RigtSh;
+	
+	int16 StickX;
+	int16 StickY;
+}
+
 global_variable Win32_Off_Screen_Buffer GlobalBackBuffer;
 
 
@@ -78,6 +95,25 @@ internal void Win32UpdateWindow(	Win32_Off_Screen_Buffer Buffer, HDC DeviceConte
 internal Win32_Window_Dimension Win32GetWindowDimension(HWND Window);
 
 internal void Wind32LoadXInput(void);
+
+internal ButtonActions getButtonAction(XINPUT_GAMEPAD *Pad)
+{
+	ButtonActions tempButtAct;
+	tempButtAct.Up 	=	(Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
+	tempButtAct.Down = 	(Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
+	tempButtAct.Left = 	(Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
+	tempButtAct.Right = 	(Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
+	tempButtAct.ButA = 	(Pad->wButtons & XINPUT_GAMEPAD_A);
+	tempButtAct.ButB = 	(Pad->wButtons & XINPUT_GAMEPAD_B);
+	tempButtAct.ButX = 	(Pad->wButtons & XINPUT_GAMEPAD_X);
+	tempButtAct.ButY = 	(Pad->wButtons & XINPUT_GAMEPAD_Y);
+	tempButtAct.LeftSh = 	(Pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
+	tempButtAct.RigtSh = 	(Pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
+	tempButtAct.StickX = 	Pad->sThumbLX;
+	tempButtAct.StickY = 	Pad->sThumbLY;
+	
+	return tempButtAct;
+}
 
 internal void 
 Wind32LoadXInput(void)
@@ -232,7 +268,8 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 					if (XInputGetState(ControllerIndex, &controlerState) == ERROR_SUCCESS) // Controller is connected 
 					{
 						XINPUT_GAMEPAD *Pad = &controlerState.Gamepad;
-						bool Up =	(Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
+						ActionButton actionButt = getButtonAction(Pad);
+					/*	bool Up =	(Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
 						bool Down = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
 						bool Left = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
 						bool Right = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
@@ -245,10 +282,11 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 
 						int16 StickX = Pad->sThumbLX;
 						int16 StickY = Pad->sThumbLY;
+					*/
 						Vibration.wLeftMotorSpeed = 0;
 						Vibration.wLeftMotorSpeed = 0;
 						
-						if(Up) 
+						if(actionButt.Up) 
 						{
 							YOffset++;
 							Vibration.wLeftMotorSpeed = 1024;
@@ -256,14 +294,14 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 							XInputSetState(0, &Vibration);
 							
 						}
-						if(Down) YOffset--;
-						if (Left)
+						if(actionButt.Down) YOffset--;
+						if (actionButt.Left)
 						{
 							Vibration.wLeftMotorSpeed = 1024;
 							XOffset++;
 							XInputSetState(0, &Vibration);
 						}
-						if (Right){
+						if (actionButt.Right){
 							Vibration.wRightMotorSpeed = 1024;
 							XOffset--;
 							XInputSetState(0, &Vibration);
