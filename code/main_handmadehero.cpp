@@ -2,19 +2,26 @@
 
 #include <windows.h>
 #include <stdint.h>
+#include <xinput.h>
 
 #define local_persist static
 #define global_variable static
 #define internal static
 
 #define PIXEL_BIT_COUNT 32
+#define BYTES_PER_PIXEL 4
 
 typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
 typedef uint64_t uint64;
 
-global_variable bool Running;
+typedef int8_t int8;
+typedef int16_t int16;
+typedef int32_t int32;
+typedef int64_t int64;
+
+global_variable bool GlobalRunning;
 
 struct Win32_Off_Screen_Buffer
 {
@@ -23,7 +30,6 @@ struct Win32_Off_Screen_Buffer
 	 int Width;
 	 int Height;
 	 int Pitch;
-	 int BytesPerPixel = 4; 
 };
 
 
@@ -34,6 +40,26 @@ struct Win32_Window_Dimension
 };
 
 global_variable Win32_Off_Screen_Buffer GlobalBackBuffer;
+
+
+
+#define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex,  XINPUT_STATE* pState)
+typedef X_INPUT_GET_STATE(x_input_get_state);
+X_INPUT_GET_STATE(XInputGetStateStub)
+{
+	return 0;
+}
+global_variable x_input_get_state *XInputGetState_ = XInputGetStateStub;
+#define XInputGetState XInputGetState_
+
+#define X_INPUT_SET_STATE(name)  DWORD WINAPI name(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration)
+typedef X_INPUT_SET_STATE(x_input_set_state);
+X_INPUT_SET_STATE(XInputSetStateStub)
+{
+	return 0;
+}
+global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
+#define XInputSetState XInputSetState_
 
 LRESULT CALLBACK Win32MainWindowCallBack(
 	HWND	Window,
@@ -47,10 +73,22 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance);
 internal void Win32ResizeDIBSection(Win32_Off_Screen_Buffer *Buffer, int, int);
 
 internal void Win32UpdateWindow(	Win32_Off_Screen_Buffer Buffer, HDC DeviceContext,
-									int WindowWidth, int WindowHeight,
-									int X, int Y, int Width, int Height);
+									int WindowWidth, int WindowHeight);
 
 internal Win32_Window_Dimension Win32GetWindowDimension(HWND Window);
+
+internal void Wind32LoadXInput(void);
+
+internal void 
+Wind32LoadXInput(void)
+{
+	HMODULE XInputLibray = LoadLibrary("xinput1_3.dll");
+	if (XInputLibray)
+	{
+		XInputGetState = (x_input_get_state *)GetProcAddress(XInputLibray, "XInputGetState");
+		XInputSetState = (x_input_set_state *)GetProcAddress(XInputLibray, "XInputSetState");
+	}
+}
 
 internal Win32_Window_Dimension 
 Win32GetWindowDimension(HWND Window)
@@ -70,7 +108,7 @@ RenderWierdGradient(Win32_Off_Screen_Buffer Buffer, int XOffset, int YOffset)
 {
 
 	
-	int Pitch = Buffer.Width*(Buffer.BytesPerPixel);
+	int Pitch = Buffer.Width*(BYTES_PER_PIXEL);
 	uint8 *Row = (uint8 *) Buffer.Memory;
 	
 	for(int Y = 0; Y < Buffer.Height; ++Y)
@@ -100,15 +138,10 @@ RenderWierdGradient(Win32_Off_Screen_Buffer Buffer, int XOffset, int YOffset)
 internal void 
 Win32UpdateWindow(	HDC DeviceContext,
 					int WindowWidth, int WindowHeight,
-					Win32_Off_Screen_Buffer Buffer,
-					int X, int Y, int Width, int Height)
+					Win32_Off_Screen_Buffer Buffer)
 {
 
 	StretchDIBits(	DeviceContext,
-	/*
-		X, Y, Width, Height,
-		X, Y, Width, Height,
-	*/
 		0, 0, WindowWidth, WindowHeight,
 		0, 0, Buffer.Width, Buffer.Height,
 		Buffer.Memory,
@@ -122,7 +155,7 @@ Win32UpdateWindow(	HDC DeviceContext,
 internal void 
 Win32ResizeDIBSection(Win32_Off_Screen_Buffer *Buffer, int Width, int Height)
 {
-	
+
 	if(Buffer->Memory)
 	{
 		VirtualFree(Buffer->Memory, NULL, MEM_RELEASE);
@@ -137,7 +170,7 @@ Win32ResizeDIBSection(Win32_Off_Screen_Buffer *Buffer, int Width, int Height)
 	Buffer->Info.bmiHeader.biBitCount = PIXEL_BIT_COUNT; //24 RGB and 8 for pading 
 	Buffer->Info.bmiHeader.biCompression = BI_RGB;
 
-	int BitMapMemSize = (Height*Width)*(Buffer->BytesPerPixel);
+	int BitMapMemSize = (Height*Width)*(BYTES_PER_PIXEL);
 	
 	Buffer->Memory = VirtualAlloc(NULL, BitMapMemSize, MEM_COMMIT, PAGE_READWRITE);
 	
@@ -173,28 +206,87 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 			);
 		if (Window)
 		{
-			Running = true;
+			HDC DeviceContext = GetDC(Window);
 			uint8 XOffset = 0;
 			uint8 YOffset = 0;
-			while (Running){
+			
+			GlobalRunning = true;
+			while (GlobalRunning){
 				MSG Message;
 				while(PeekMessage( &Message,  0,0,0, PM_REMOVE)) 
 				{
 					if(Message.message == WM_QUIT)
 					{
-						Running = false;
+						GlobalRunning = false;
 					}
 					TranslateMessage(&Message);
 					DispatchMessage(&Message);				
 				}
-				
+				XINPUT_VIBRATION Vibration;
+				for (DWORD ControllerIndex = 0; ControllerIndex< XUSER_MAX_COUNT; ControllerIndex++ )
+				{
+					XINPUT_STATE controlerState;
+					ZeroMemory( &controlerState, sizeof(XINPUT_STATE) );
+
+					// Simply get the controlerState of the controller from XInput.	
+
+					if (XInputGetState(ControllerIndex, &controlerState) == ERROR_SUCCESS) // Controller is connected 
+					{
+						XINPUT_GAMEPAD *Pad = &controlerState.Gamepad;
+						bool Up =	(Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
+						bool Down = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
+						bool Left = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
+						bool Right = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
+						bool ButA = (Pad->wButtons & XINPUT_GAMEPAD_A);
+						bool ButB = (Pad->wButtons & XINPUT_GAMEPAD_B);
+						bool ButX = (Pad->wButtons & XINPUT_GAMEPAD_X);
+						bool ButY = (Pad->wButtons & XINPUT_GAMEPAD_Y);
+						bool LeftSh = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
+						bool RigtSh = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
+
+						int16 StickX = Pad->sThumbLX;
+						int16 StickY = Pad->sThumbLY;
+						Vibration.wLeftMotorSpeed = 0;
+						Vibration.wLeftMotorSpeed = 0;
+						
+						if(Up) 
+						{
+							YOffset++;
+							Vibration.wLeftMotorSpeed = 1024;
+							Vibration.wRightMotorSpeed = 1024;
+							XInputSetState(0, &Vibration);
+							
+						}
+						if(Down) YOffset--;
+						if (Left)
+						{
+							Vibration.wLeftMotorSpeed = 1024;
+							XOffset++;
+							XInputSetState(0, &Vibration);
+						}
+						if (Right){
+							Vibration.wRightMotorSpeed = 1024;
+							XOffset--;
+							XInputSetState(0, &Vibration);
+						}
+
+						XInputSetState(0, &Vibration);
+					}
+					else
+					{
+					// Controller is not connected 
+					}
+				}
+				Vibration.wRightMotorSpeed = 0;
+				Vibration.wRightMotorSpeed = 0;
+
+				XInputSetState(0, &Vibration);
 				RenderWierdGradient(GlobalBackBuffer, XOffset, YOffset);
-				HDC DeviceContext = GetDC(Window);
+
 				Win32_Window_Dimension Dimensiton = Win32GetWindowDimension(Window);
-				Win32UpdateWindow(DeviceContext, Dimensiton.Width, Dimensiton.Height, GlobalBackBuffer, 0, 0, Dimensiton.Width, Dimensiton.Height);
-				ReleaseDC(Window, DeviceContext);
-				XOffset++;
-				YOffset--;
+				Win32UpdateWindow(DeviceContext, Dimensiton.Width, Dimensiton.Height, GlobalBackBuffer);
+
+
 
 			}
 
@@ -219,6 +311,7 @@ LRESULT CALLBACK Win32MainWindowCallBack(
 	LPARAM	LParam
 	)
 {
+	Wind32LoadXInput();
 	LRESULT Result = 0;
 	Win32_Window_Dimension Dimension = Win32GetWindowDimension(Window);
 	Win32ResizeDIBSection(&GlobalBackBuffer, 1200, 720);
@@ -236,7 +329,7 @@ LRESULT CALLBACK Win32MainWindowCallBack(
 			
 			Win32_Window_Dimension Dimension = Win32GetWindowDimension(Window);
 			RenderWierdGradient(GlobalBackBuffer, Width, Height);
-			Win32UpdateWindow(DeviceContext, Dimension.Width, Dimension.Height, GlobalBackBuffer, X, Y, Width, Height);
+			Win32UpdateWindow(DeviceContext, Dimension.Width, Dimension.Height, GlobalBackBuffer);
 			EndPaint(Window, &Paint);
 		} break;
 		case WM_SIZE:
@@ -246,12 +339,12 @@ LRESULT CALLBACK Win32MainWindowCallBack(
 		case WM_DESTROY:
 		{
 			//TODO: This is a ERRO situation, deal with it!!
-			Running = false;
+			GlobalRunning = false;
 			OutputDebugStringA("WM_DESTROY\n");
 		} break;
 		case WM_CLOSE:
 		{
-			Running = false;
+			GlobalRunning = false;
 			OutputDebugStringA("WM_CLOSE\n");
 		} break;
 		case WM_ACTIVATEAPP:
