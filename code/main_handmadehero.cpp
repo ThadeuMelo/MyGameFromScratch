@@ -3,6 +3,7 @@
 #include <windows.h>
 #include <stdint.h>
 #include <xinput.h>
+#include <dsound.h>
 
 #define local_persist static
 #define global_variable static
@@ -54,7 +55,7 @@ struct ButtonActions
 	
 	int16 StickX;
 	int16 StickY;
-}
+};
 
 global_variable Win32_Off_Screen_Buffer GlobalBackBuffer;
 
@@ -76,6 +77,10 @@ X_INPUT_SET_STATE(XInputSetStateStub)
 global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
 #define XInputSetState XInputSetState_
 
+#define DIRECT_SOUND_CREATE(name)_Check_return_ HRESULT WINAPI name(_In_opt_ LPCGUID pcGuidDevice, _Outptr_ LPDIRECTSOUND *ppDS, _Pre_null_ LPUNKNOWN pUnkOuter)
+typedef DIRECT_SOUND_CREATE(direct_sound_create);
+
+
 LRESULT CALLBACK Win32MainWindowCallBack(
 	HWND	Window,
 	UINT	Message,
@@ -87,7 +92,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance);
 
 internal void Win32ResizeDIBSection(Win32_Off_Screen_Buffer *Buffer, int, int);
 
-internal void Win32UpdateWindow(	Win32_Off_Screen_Buffer Buffer, HDC DeviceContext,
+internal void Win32UpdateWindow(Win32_Off_Screen_Buffer *Buffer, HDC DeviceContext,
 									int WindowWidth, int WindowHeight);
 
 internal Win32_Window_Dimension Win32GetWindowDimension(HWND Window);
@@ -123,8 +128,8 @@ Wind32LoadXInput(void)
 	}
 	if (XInputLibrary)
 	{
-		XInputGetState = (x_input_get_state *)GetProcAddress(XInputLibray, "XInputGetState");
-		XInputSetState = (x_input_set_state *)GetProcAddress(XInputLibray, "XInputSetState");
+		XInputGetState = (x_input_get_state *)GetProcAddress(XInputLibrary, "XInputGetState");
+		XInputSetState = (x_input_set_state *)GetProcAddress(XInputLibrary, "XInputSetState");
 	}
 }
 
@@ -138,6 +143,81 @@ Win32GetWindowDimension(HWND Window)
 	Result.Height = ClientRect.bottom - ClientRect.top;
 
 	return Result;
+}
+
+internal void
+Win32InitDSound(HWND Window, int32 sampesPerSecond, int32 BufferSize)
+{
+	//Load Direct Sound Library
+	HMODULE DSoundLibrary = LoadLibrary("dsound.dll");
+
+	if (DSoundLibrary)
+	{
+		//Get a DirectSound object!
+		direct_sound_create *DirectSoundCreate = (direct_sound_create *) GetProcAddress(DSoundLibrary, "DirectSoundCreate");
+
+		LPDIRECTSOUND DirectSound;
+		if (DirectSoundCreate && SUCCEEDED(DirectSoundCreate(0, &DirectSound, 0)))
+		{
+			WAVEFORMATEX WaveFormat = {};
+			WaveFormat.wFormatTag = WAVE_FORMAT_PCM;
+			WaveFormat.nChannels = 2;
+			WaveFormat.nSamplesPerSec = sampesPerSecond;
+			WaveFormat.nBlockAlign = (WaveFormat.nChannels*WaveFormat.wBitsPerSample) / 8;
+			WaveFormat.nAvgBytesPerSec = WaveFormat.nBlockAlign*WaveFormat.nBlockAlign;
+			WaveFormat.wBitsPerSample = 16;
+			WaveFormat.cbSize;
+
+			if (SUCCEEDED(DirectSound->SetCooperativeLevel(Window, DSSCL_PRIORITY)))
+			{
+				DSBUFFERDESC BufferDescription = {};
+				BufferDescription.dwSize = sizeof(BufferDescription);
+				BufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
+				LPDIRECTSOUNDBUFFER PrimaryBuffer;
+				if (SUCCEEDED(DirectSound->CreateSoundBuffer(&BufferDescription, &PrimaryBuffer, 0)))
+				{
+
+					if (SUCCEEDED(PrimaryBuffer->SetFormat(&WaveFormat)))
+					{
+
+					}
+					else
+					{
+
+					}
+				}
+			}
+
+			DSBUFFERDESC BufferDescription = {};
+			BufferDescription.dwSize = sizeof(BufferDescription);
+			BufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
+			BufferDescription.dwBufferBytes = BufferSize;
+			BufferDescription.lpwfxFormat = &WaveFormat;
+
+			LPDIRECTSOUNDBUFFER SecondaryBuffer;
+
+			if (SUCCEEDED(DirectSound->CreateSoundBuffer(&BufferDescription, &SecondaryBuffer, 0)))
+			{
+
+				if (SUCCEEDED(SecondaryBuffer->SetFormat(&WaveFormat)))
+				{
+				}
+			}
+			else
+			{
+
+			}
+			//"Create" a primary buffer
+
+			//"Create" a secundary buffer
+
+			//Start it playing
+		}
+		else
+		{
+			//TODO log errors here
+		}
+	}
 }
 
 
@@ -174,13 +254,13 @@ RenderWierdGradient(Win32_Off_Screen_Buffer *Buffer, int XOffset, int YOffset)
 }
 
 internal void 
-Win32UpdateWindow(	Win32_Off_Screen_Buffer &Buffer, HDC DeviceContext,
+Win32UpdateWindow( Win32_Off_Screen_Buffer *Buffer, HDC DeviceContext,
 					int WindowWidth, int WindowHeight)
 {
 
 	StretchDIBits(	DeviceContext,
 		0, 0, WindowWidth, WindowHeight,
-		0, 0, Buffer.Width, Buffer.Height,
+		0, 0, Buffer->Width, Buffer->Height,
 		Buffer->Memory,
 		&Buffer->Info,
 		DIB_RGB_COLORS,
@@ -246,7 +326,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 			HDC DeviceContext = GetDC(Window);
 			uint8 XOffset = 0;
 			uint8 YOffset = 0;
-			
+			Win32InitDSound(Window, 48000, 48000 * sizeof(int16) * 2);
 			GlobalRunning = true;
 			while (GlobalRunning){
 				MSG Message;
@@ -270,29 +350,16 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 					if (XInputGetState(ControllerIndex, &controlerState) == ERROR_SUCCESS) // Controller is connected 
 					{
 						XINPUT_GAMEPAD *Pad = &controlerState.Gamepad;
-						ActionButton actionButt = getButtonAction(Pad);
-					/*	bool Up =	(Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
-						bool Down = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
-						bool Left = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
-						bool Right = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
-						bool ButA = (Pad->wButtons & XINPUT_GAMEPAD_A);
-						bool ButB = (Pad->wButtons & XINPUT_GAMEPAD_B);
-						bool ButX = (Pad->wButtons & XINPUT_GAMEPAD_X);
-						bool ButY = (Pad->wButtons & XINPUT_GAMEPAD_Y);
-						bool LeftSh = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
-						bool RigtSh = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
-
-						int16 StickX = Pad->sThumbLX;
-						int16 StickY = Pad->sThumbLY;
-					*/
+						ButtonActions actionButt = getButtonAction(Pad);
+					
 						Vibration.wLeftMotorSpeed = 0;
 						Vibration.wLeftMotorSpeed = 0;
 						
 						if(actionButt.Up) 
 						{
 							YOffset++;
-							Vibration.wLeftMotorSpeed = 1024;
-							Vibration.wRightMotorSpeed = 1024;
+							Vibration.wLeftMotorSpeed = 6024;
+							Vibration.wRightMotorSpeed = 6024;
 							XInputSetState(0, &Vibration);
 							
 						}
@@ -367,8 +434,8 @@ LRESULT CALLBACK Win32MainWindowCallBack(
 			int Width = Paint.rcPaint.right - Paint.rcPaint.left;
 			
 			Win32_Window_Dimension Dimension = Win32GetWindowDimension(Window);
-			RenderWierdGradient(GlobalBackBuffer, Width, Height);
-			Win32UpdateWindow(DeviceContext, Dimension.Width, Dimension.Height, GlobalBackBuffer);
+			RenderWierdGradient(&GlobalBackBuffer, Width, Height);
+			Win32UpdateWindow(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
 			EndPaint(Window, &Paint);
 		} break;
 		case WM_SIZE:
