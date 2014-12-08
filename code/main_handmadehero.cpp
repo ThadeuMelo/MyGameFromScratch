@@ -58,6 +58,7 @@ struct ButtonActions
 };
 
 global_variable Win32_Off_Screen_Buffer GlobalBackBuffer;
+global_variable LPDIRECTSOUNDBUFFER SecondaryBuffer;
 
 #define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex,  XINPUT_STATE* pState)
 typedef X_INPUT_GET_STATE(x_input_get_state);
@@ -194,7 +195,6 @@ Win32InitDSound(HWND Window, int32 sampesPerSecond, int32 BufferSize)
 			BufferDescription.dwBufferBytes = BufferSize;
 			BufferDescription.lpwfxFormat = &WaveFormat;
 
-			LPDIRECTSOUNDBUFFER SecondaryBuffer;
 
 			if (SUCCEEDED(DirectSound->CreateSoundBuffer(&BufferDescription, &SecondaryBuffer, 0)))
 			{
@@ -383,11 +383,17 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 					// Controller is not connected 
 					}
 				}
-				Vibration.wRightMotorSpeed = 0;
-				Vibration.wRightMotorSpeed = 0;
 
 				XInputSetState(0, &Vibration);
 				RenderWierdGradient(&GlobalBackBuffer, XOffset, YOffset);
+				DWORD writerPointer;
+				DWORD bytesToWrite;
+				VOID *region1;
+				DWORD region1Size;
+				VOID *region2;
+				DWORD region2Size;
+
+				SecondaryBuffer->Lock(writerPointer, bytesToWrite, &region1, &region1Size, &region2, &region2Size,0);
 
 				Win32_Window_Dimension Dimensiton = Win32GetWindowDimension(Window);
 				Win32UpdateWindow(&GlobalBackBuffer, DeviceContext, Dimensiton.Width, Dimensiton.Height);
