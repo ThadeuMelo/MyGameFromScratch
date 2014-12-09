@@ -326,7 +326,14 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 			HDC DeviceContext = GetDC(Window);
 			uint8 XOffset = 0;
 			uint8 YOffset = 0;
-			Win32InitDSound(Window, 48000, 48000 * sizeof(int16) * 2);
+			int samplesPersecond = 48000;
+			int squareWaveCounter = 0;
+
+			int Hz = 440;
+			int squareWavePeriod = 48000/440;
+			int bytesPersample =  sizeof(int16) * 2;
+
+			Win32InitDSound(Window, samplesPersecond, samplesPersecond *bytesPersample);
 			GlobalRunning = true;
 			while (GlobalRunning){
 				MSG Message;
@@ -385,6 +392,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				}
 
 				XInputSetState(0, &Vibration);
+
 				RenderWierdGradient(&GlobalBackBuffer, XOffset, YOffset);
 				DWORD writerPointer;
 				DWORD bytesToWrite;
@@ -392,8 +400,37 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				DWORD region1Size;
 				VOID *region2;
 				DWORD region2Size;
-
+				DWORD resion1SampleCounter = region1Size / bytesPersample;
 				SecondaryBuffer->Lock(writerPointer, bytesToWrite, &region1, &region1Size, &region2, &region2Size,0);
+
+				int16 *sampleOut = (int16 *)region1;
+				for (DWORD sampleIndex = 0; sampleIndex < resion1SampleCounter; ++sampleIndex)
+				{
+					if (squareWaveCounter)
+					{
+						squareWaveCounter = squareWavePeriod;
+
+					}
+					int16 sampleValue = (squareWaveCounter > (squareWavePeriod/2))?10000:-10000;
+					*sampleOut++ = sampleValue;
+					*sampleOut++ = sampleValue;
+					squareWaveCounter--;
+				}
+
+				DWORD resion2SampleCounter = region2Size / bytesPersample;
+
+				for (DWORD sampleIndex = 0; sampleIndex < resion2SampleCounter; ++sampleIndex)
+				{
+					if (squareWaveCounter)
+					{
+						squareWaveCounter = squareWavePeriod;
+
+					}
+					int16 sampleValue = (squareWaveCounter >(squareWavePeriod / 2)) ? 10000 : -10000;
+					*sampleOut++ = sampleValue;
+					*sampleOut++ = sampleValue;
+					squareWaveCounter--;
+				}
 
 				Win32_Window_Dimension Dimensiton = Win32GetWindowDimension(Window);
 				Win32UpdateWindow(&GlobalBackBuffer, DeviceContext, Dimensiton.Width, Dimensiton.Height);
