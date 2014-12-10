@@ -433,6 +433,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 							runningIndexBuffer++;
 						}
 					}
+					SecondaryBuffer->Unlock(region1, region1Size, region2, region2Size);
 				}
 				Win32_Window_Dimension Dimensiton = Win32GetWindowDimension(Window);
 				Win32UpdateWindow(&GlobalBackBuffer, DeviceContext, Dimensiton.Width, Dimensiton.Height);
