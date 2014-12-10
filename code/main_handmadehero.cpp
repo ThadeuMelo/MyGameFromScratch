@@ -81,7 +81,6 @@ global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
 #define DIRECT_SOUND_CREATE(name)_Check_return_ HRESULT WINAPI name(_In_opt_ LPCGUID pcGuidDevice, _Outptr_ LPDIRECTSOUND *ppDS, _Pre_null_ LPUNKNOWN pUnkOuter)
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
-
 LRESULT CALLBACK Win32MainWindowCallBack(
 	HWND	Window,
 	UINT	Message,
@@ -157,8 +156,9 @@ Win32InitDSound(HWND Window, int32 samplesPerSecond, int32 BufferSize)
 		//Get a DirectSound object!
 		direct_sound_create *DirectSoundCreate = (direct_sound_create *) GetProcAddress(DSoundLibrary, "DirectSoundCreate");
 
-		LPDIRECTSOUND DirectSound;
-		if (DirectSoundCreate && SUCCEEDED(DirectSoundCreate(0, &DirectSound, 0)))
+		LPDIRECTSOUND DirectSound = {};
+		HRESULT Error = DirectSoundCreate(0, &DirectSound, 0);
+		if (DirectSoundCreate && SUCCEEDED(Error))
 		{
 			WAVEFORMATEX WaveFormat = {};
 			WaveFormat.wFormatTag = WAVE_FORMAT_PCM;
@@ -166,7 +166,7 @@ Win32InitDSound(HWND Window, int32 samplesPerSecond, int32 BufferSize)
 			WaveFormat.nSamplesPerSec = samplesPerSecond;
 			WaveFormat.wBitsPerSample = 16;
 			WaveFormat.nBlockAlign = (WaveFormat.nChannels*WaveFormat.wBitsPerSample) / 8;
-			WaveFormat.nAvgBytesPerSec = WaveFormat.nBlockAlign*WaveFormat.nBlockAlign;
+			WaveFormat.nAvgBytesPerSec = WaveFormat.nSamplesPerSec * WaveFormat.nBlockAlign;
 
 			if (SUCCEEDED(DirectSound->SetCooperativeLevel(Window, DSSCL_PRIORITY)))
 			{
@@ -319,7 +319,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 			HDC DeviceContext = GetDC(Window);
 			uint8 XOffset = 0;
 			uint8 YOffset = 0;
-			int samplesPersecond = 44000;
+			int samplesPersecond = 44100;
 			int squareWaveCounter = 0;
 
 			int Hz = 440;
@@ -424,7 +424,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 						}
 
 						DWORD resion2SampleCounter = region2Size / bytesPersample;
-						*sampleOut = (int16 )region2;
+						sampleOut = (int16 *)region2;
 						for (DWORD sampleIndex = 0; sampleIndex < resion2SampleCounter; ++sampleIndex)
 						{
 							int16 sampleValue = ((runningIndexBuffer /(squareWavePeriod / 2))%2) ? 10000 : -10000;
