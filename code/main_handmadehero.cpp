@@ -147,7 +147,7 @@ Win32GetWindowDimension(HWND Window)
 }
 
 internal void
-Win32InitDSound(HWND Window, int32 sampesPerSecond, int32 BufferSize)
+Win32InitDSound(HWND Window, int32 samplesPerSecond, int32 BufferSize)
 {
 	//Load Direct Sound Library
 	HMODULE DSoundLibrary = LoadLibrary("dsound.dll");
@@ -163,11 +163,10 @@ Win32InitDSound(HWND Window, int32 sampesPerSecond, int32 BufferSize)
 			WAVEFORMATEX WaveFormat = {};
 			WaveFormat.wFormatTag = WAVE_FORMAT_PCM;
 			WaveFormat.nChannels = 2;
-			WaveFormat.nSamplesPerSec = sampesPerSecond;
+			WaveFormat.nSamplesPerSec = samplesPerSecond;
+			WaveFormat.wBitsPerSample = 16;
 			WaveFormat.nBlockAlign = (WaveFormat.nChannels*WaveFormat.wBitsPerSample) / 8;
 			WaveFormat.nAvgBytesPerSec = WaveFormat.nBlockAlign*WaveFormat.nBlockAlign;
-			WaveFormat.wBitsPerSample = 16;
-			WaveFormat.cbSize;
 
 			if (SUCCEEDED(DirectSound->SetCooperativeLevel(Window, DSSCL_PRIORITY)))
 			{
@@ -175,43 +174,37 @@ Win32InitDSound(HWND Window, int32 sampesPerSecond, int32 BufferSize)
 				BufferDescription.dwSize = sizeof(BufferDescription);
 				BufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
 				LPDIRECTSOUNDBUFFER PrimaryBuffer;
+				
 				if (SUCCEEDED(DirectSound->CreateSoundBuffer(&BufferDescription, &PrimaryBuffer, 0)))
 				{
-
-					if (SUCCEEDED(PrimaryBuffer->SetFormat(&WaveFormat)))
+					HRESULT Error_cd = PrimaryBuffer->SetFormat(&WaveFormat);
+					if (SUCCEEDED(Error_cd))
 					{
-
+						OutputDebugString("PrimaryBuffer set");
 					}
 					else
 					{
-
+						OutputDebugString("PrimaryBuffer not set");
 					}
 				}
 			}
 
 			DSBUFFERDESC BufferDescription = {};
 			BufferDescription.dwSize = sizeof(BufferDescription);
-			BufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
+			BufferDescription.dwFlags = 0;
 			BufferDescription.dwBufferBytes = BufferSize;
 			BufferDescription.lpwfxFormat = &WaveFormat;
 
-
-			if (SUCCEEDED(DirectSound->CreateSoundBuffer(&BufferDescription, &SecondaryBuffer, 0)))
+			HRESULT Error_cd = DirectSound->CreateSoundBuffer(&BufferDescription, &SecondaryBuffer, 0);
+			if (SUCCEEDED(Error_cd))
 			{
-
-				if (SUCCEEDED(SecondaryBuffer->SetFormat(&WaveFormat)))
-				{
-				}
+				OutputDebugString("Secondary set");
 			}
 			else
 			{
-
+				OutputDebugString("Secondary not set");
 			}
-			//"Create" a primary buffer
 
-			//"Create" a secundary buffer
-
-			//Start it playing
 		}
 		else
 		{
@@ -326,14 +319,17 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 			HDC DeviceContext = GetDC(Window);
 			uint8 XOffset = 0;
 			uint8 YOffset = 0;
-			int samplesPersecond = 48000;
+			int samplesPersecond = 44000;
 			int squareWaveCounter = 0;
 
 			int Hz = 440;
 			int squareWavePeriod = 48000/440;
+			uint32 runningIndexBuffer = 0;
 			int bytesPersample =  sizeof(int16) * 2;
+			int SecondaryBufferSize = samplesPersecond*bytesPersample;
 
-			Win32InitDSound(Window, samplesPersecond, samplesPersecond *bytesPersample);
+			Win32InitDSound(Window, samplesPersecond, SecondaryBufferSize);
+			SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
 			GlobalRunning = true;
 			while (GlobalRunning){
 				MSG Message;
@@ -391,47 +387,53 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 					}
 				}
 
-				XInputSetState(0, &Vibration);
 
 				RenderWierdGradient(&GlobalBackBuffer, XOffset, YOffset);
-				DWORD writerPointer;
-				DWORD bytesToWrite;
-				VOID *region1;
-				DWORD region1Size;
-				VOID *region2;
-				DWORD region2Size;
-				DWORD resion1SampleCounter = region1Size / bytesPersample;
-				SecondaryBuffer->Lock(writerPointer, bytesToWrite, &region1, &region1Size, &region2, &region2Size,0);
-
-				int16 *sampleOut = (int16 *)region1;
-				for (DWORD sampleIndex = 0; sampleIndex < resion1SampleCounter; ++sampleIndex)
+				DWORD playCursor;
+				DWORD writeCursor;
+				if(SUCCEEDED(SecondaryBuffer->GetCurrentPosition(&playCursor,&writeCursor)))
 				{
-					if (squareWaveCounter)
+					DWORD bytesToLock = runningIndexBuffer*bytesPersample%SecondaryBufferSize;
+					DWORD bytesToWrite;
+					if (bytesToLock > playCursor)
 					{
-						squareWaveCounter = squareWavePeriod;
-
+						bytesToWrite = SecondaryBufferSize - bytesToLock;
+						bytesToWrite += playCursor;
 					}
-					int16 sampleValue = (squareWaveCounter > (squareWavePeriod/2))?10000:-10000;
-					*sampleOut++ = sampleValue;
-					*sampleOut++ = sampleValue;
-					squareWaveCounter--;
-				}
-
-				DWORD resion2SampleCounter = region2Size / bytesPersample;
-
-				for (DWORD sampleIndex = 0; sampleIndex < resion2SampleCounter; ++sampleIndex)
-				{
-					if (squareWaveCounter)
+					else
 					{
-						squareWaveCounter = squareWavePeriod;
-
+						bytesToWrite = playCursor - bytesToLock;
 					}
-					int16 sampleValue = (squareWaveCounter >(squareWavePeriod / 2)) ? 10000 : -10000;
-					*sampleOut++ = sampleValue;
-					*sampleOut++ = sampleValue;
-					squareWaveCounter--;
-				}
+					VOID *region1;
+					DWORD region1Size;
+					VOID *region2;
+					DWORD region2Size;
 
+
+					
+					if (SUCCEEDED(SecondaryBuffer->Lock(bytesToLock, bytesToWrite, &region1, &region1Size, &region2, &region2Size, 0)))
+					{
+						DWORD resion1SampleCounter = region1Size / bytesPersample;
+						int16 *sampleOut = (int16 *)region1;
+						for (DWORD sampleIndex = 0; sampleIndex < resion1SampleCounter; ++sampleIndex)
+						{
+							int16 sampleValue = ((runningIndexBuffer/(squareWavePeriod / 2)) % 2) ? 10000 : -10000;
+							*sampleOut++ = sampleValue;
+							*sampleOut++ = sampleValue;
+							runningIndexBuffer++;
+						}
+
+						DWORD resion2SampleCounter = region2Size / bytesPersample;
+						*sampleOut = (int16 )region2;
+						for (DWORD sampleIndex = 0; sampleIndex < resion2SampleCounter; ++sampleIndex)
+						{
+							int16 sampleValue = ((runningIndexBuffer /(squareWavePeriod / 2))%2) ? 10000 : -10000;
+							*sampleOut++ = sampleValue;
+							*sampleOut++ = sampleValue;
+							runningIndexBuffer++;
+						}
+					}
+				}
 				Win32_Window_Dimension Dimensiton = Win32GetWindowDimension(Window);
 				Win32UpdateWindow(&GlobalBackBuffer, DeviceContext, Dimensiton.Width, Dimensiton.Height);
 
