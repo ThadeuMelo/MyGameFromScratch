@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <xinput.h>
 #include <dsound.h>
+#include <math.h>
 
 #define local_persist static
 #define global_variable static
@@ -11,6 +12,7 @@
 
 #define PIXEL_BIT_COUNT 32
 #define BYTES_PER_PIXEL 4
+#define Pi32 3.14159265359f
 
 typedef uint8_t uint8;
 typedef uint16_t uint16;
@@ -21,6 +23,11 @@ typedef int8_t int8;
 typedef int16_t int16;
 typedef int32_t int32;
 typedef int64_t int64;
+
+typedef float real32;
+typedef double real64;
+
+
 
 global_variable bool GlobalRunning;
 
@@ -55,6 +62,17 @@ struct ButtonActions
 	
 	int16 StickX;
 	int16 StickY;
+};
+
+struct Win32_output_sound
+{
+	int samplesPersecond = 44100;
+	int waveCounter = 0;
+	int Hz = 440;
+	int wavePeriod = 48000 / 440;
+	int bytesPersample = sizeof(int16) * 2;
+	int SecondaryBufferSize = samplesPersecond*bytesPersample;
+
 };
 
 global_variable Win32_Off_Screen_Buffer GlobalBackBuffer;
@@ -118,6 +136,11 @@ internal ButtonActions getButtonAction(XINPUT_GAMEPAD *Pad)
 	return tempButtAct;
 }
 
+internal void
+Win32FillSoundBuffer(Win32_output_sound *soundOutput)
+{
+
+}
 internal void 
 Wind32LoadXInput(void)
 {
@@ -319,17 +342,9 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 			HDC DeviceContext = GetDC(Window);
 			uint8 XOffset = 0;
 			uint8 YOffset = 0;
-			int samplesPersecond = 44100;
-			int squareWaveCounter = 0;
-
-			int Hz = 440;
-			int squareWavePeriod = 48000/440;
 			uint32 runningIndexBuffer = 0;
-			int bytesPersample =  sizeof(int16) * 2;
-			int SecondaryBufferSize = samplesPersecond*bytesPersample;
-
-			Win32InitDSound(Window, samplesPersecond, SecondaryBufferSize);
-			SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
+			Win32_output_sound soundOutput = {};
+			Win32InitDSound(Window, soundOutput.samplesPersecond, soundOutput.SecondaryBufferSize);
 			GlobalRunning = true;
 			while (GlobalRunning){
 				MSG Message;
@@ -393,11 +408,11 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				DWORD writeCursor;
 				if(SUCCEEDED(SecondaryBuffer->GetCurrentPosition(&playCursor,&writeCursor)))
 				{
-					DWORD bytesToLock = runningIndexBuffer*bytesPersample%SecondaryBufferSize;
+					DWORD bytesToLock = runningIndexBuffer*soundOutput.bytesPersample%soundOutput.SecondaryBufferSize;
 					DWORD bytesToWrite;
 					if (bytesToLock > playCursor)
 					{
-						bytesToWrite = SecondaryBufferSize - bytesToLock;
+						bytesToWrite = soundOutput.SecondaryBufferSize - bytesToLock;
 						bytesToWrite += playCursor;
 					}
 					else
@@ -413,21 +428,25 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 					
 					if (SUCCEEDED(SecondaryBuffer->Lock(bytesToLock, bytesToWrite, &region1, &region1Size, &region2, &region2Size, 0)))
 					{
-						DWORD resion1SampleCounter = region1Size / bytesPersample;
+						DWORD resion1SampleCounter = region1Size / soundOutput.bytesPersample;
 						int16 *sampleOut = (int16 *)region1;
 						for (DWORD sampleIndex = 0; sampleIndex < resion1SampleCounter; ++sampleIndex)
 						{
-							int16 sampleValue = ((runningIndexBuffer/(squareWavePeriod / 2)) % 2) ? 10000 : -10000;
+							real32 T = 2.0f*Pi32*(real32)runningIndexBuffer / (real32)soundOutput.wavePeriod;
+							real32 sineValue = sin(T);
+							int16 sampleValue = (int16)(sineValue * 10000);
 							*sampleOut++ = sampleValue;
 							*sampleOut++ = sampleValue;
 							runningIndexBuffer++;
 						}
 
-						DWORD resion2SampleCounter = region2Size / bytesPersample;
+						DWORD resion2SampleCounter = region2Size / soundOutput.bytesPersample;
 						sampleOut = (int16 *)region2;
 						for (DWORD sampleIndex = 0; sampleIndex < resion2SampleCounter; ++sampleIndex)
 						{
-							int16 sampleValue = ((runningIndexBuffer /(squareWavePeriod / 2))%2) ? 10000 : -10000;
+							real32 T = 2.0f*Pi32*(real32)runningIndexBuffer / (real32)soundOutput.wavePeriod;
+							real32 sineValue = sin(T);
+							int16 sampleValue = (int16)(sineValue * 10000);
 							*sampleOut++ = sampleValue;
 							*sampleOut++ = sampleValue;
 							runningIndexBuffer++;
@@ -437,7 +456,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				}
 				Win32_Window_Dimension Dimensiton = Win32GetWindowDimension(Window);
 				Win32UpdateWindow(&GlobalBackBuffer, DeviceContext, Dimensiton.Width, Dimensiton.Height);
-
+				SecondaryBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
 
 			}
