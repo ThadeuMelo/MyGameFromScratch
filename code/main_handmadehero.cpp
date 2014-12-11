@@ -137,8 +137,40 @@ internal ButtonActions getButtonAction(XINPUT_GAMEPAD *Pad)
 }
 
 internal void
-Win32FillSoundBuffer(Win32_output_sound *soundOutput)
+Win32FillSoundBuffer(Win32_output_sound *soundOutput, DWORD BytesToLock, DWORD bytesToWrite)
 {
+	VOID *region1;
+	DWORD region1Size;
+	VOID *region2;
+	DWORD region2Size;
+	
+	if (SUCCEEDED(SecondaryBuffer->Lock(bytesToLock, bytesToWrite, &region1, &region1Size, &region2, &region2Size, 0)))
+	{
+		DWORD resion1SampleCounter = region1Size / soundOutput->bytesPersample;
+		int16 *sampleOut = (int16 *)region1;
+		for (DWORD sampleIndex = 0; sampleIndex < resion1SampleCounter; ++sampleIndex)
+		{
+			real32 T = 2.0f*Pi32*(real32)runningIndexBuffer / (real32)soundOutput->wavePeriod;
+			real32 sineValue = sin(T);
+			int16 sampleValue = (int16)(sineValue * 10000);
+			*sampleOut++ = sampleValue;
+			*sampleOut++ = sampleValue;
+			runningIndexBuffer++;
+		}
+	
+		DWORD resion2SampleCounter = region2Size / soundOutput->bytesPersample;
+		sampleOut = (int16 *)region2;
+		for (DWORD sampleIndex = 0; sampleIndex < resion2SampleCounter; ++sampleIndex)
+		{
+			real32 T = 2.0f*Pi32*(real32)runningIndexBuffer / (real32)soundOutput->wavePeriod;
+			real32 sineValue = sin(T);
+			int16 sampleValue = (int16)(sineValue * 10000);
+			*sampleOut++ = sampleValue;
+			*sampleOut++ = sampleValue;
+			runningIndexBuffer++;
+		}
+	}
+	SecondaryBuffer->Unlock(region1, region1Size, region2, region2Size);
 
 }
 internal void 
@@ -345,7 +377,9 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 			uint32 runningIndexBuffer = 0;
 			Win32_output_sound soundOutput = {};
 			Win32InitDSound(Window, soundOutput.samplesPersecond, soundOutput.SecondaryBufferSize);
+			Win32FillSoundBuffer(&soundOutput, 0, soundOutput.bufferSize);
 			GlobalRunning = true;
+			boll32 isSoundPlaying = false;
 			while (GlobalRunning){
 				MSG Message;
 				while(PeekMessage( &Message,  0,0,0, PM_REMOVE)) 
@@ -410,7 +444,18 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				{
 					DWORD bytesToLock = runningIndexBuffer*soundOutput.bytesPersample%soundOutput.SecondaryBufferSize;
 					DWORD bytesToWrite;
-					if (bytesToLock > playCursor)
+					if(bytesToLock == playCursor)
+					{
+						if(!isSoundPlaying)
+						{
+							bytesToWrite = 0;
+						}
+						else
+						{
+							bytesToWrite = playCursor;
+						}
+					}
+					else if (bytesToLock > playCursor)
 					{
 						bytesToWrite = soundOutput.SecondaryBufferSize - bytesToLock;
 						bytesToWrite += playCursor;
@@ -419,40 +464,9 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 					{
 						bytesToWrite = playCursor - bytesToLock;
 					}
-					VOID *region1;
-					DWORD region1Size;
-					VOID *region2;
-					DWORD region2Size;
-
-
 					
-					if (SUCCEEDED(SecondaryBuffer->Lock(bytesToLock, bytesToWrite, &region1, &region1Size, &region2, &region2Size, 0)))
-					{
-						DWORD resion1SampleCounter = region1Size / soundOutput.bytesPersample;
-						int16 *sampleOut = (int16 *)region1;
-						for (DWORD sampleIndex = 0; sampleIndex < resion1SampleCounter; ++sampleIndex)
-						{
-							real32 T = 2.0f*Pi32*(real32)runningIndexBuffer / (real32)soundOutput.wavePeriod;
-							real32 sineValue = sin(T);
-							int16 sampleValue = (int16)(sineValue * 10000);
-							*sampleOut++ = sampleValue;
-							*sampleOut++ = sampleValue;
-							runningIndexBuffer++;
-						}
+					Win32FillSoundBuffer(&soundOutput, bytesToLock, bytesToWrite);
 
-						DWORD resion2SampleCounter = region2Size / soundOutput.bytesPersample;
-						sampleOut = (int16 *)region2;
-						for (DWORD sampleIndex = 0; sampleIndex < resion2SampleCounter; ++sampleIndex)
-						{
-							real32 T = 2.0f*Pi32*(real32)runningIndexBuffer / (real32)soundOutput.wavePeriod;
-							real32 sineValue = sin(T);
-							int16 sampleValue = (int16)(sineValue * 10000);
-							*sampleOut++ = sampleValue;
-							*sampleOut++ = sampleValue;
-							runningIndexBuffer++;
-						}
-					}
-					SecondaryBuffer->Unlock(region1, region1Size, region2, region2Size);
 				}
 				Win32_Window_Dimension Dimensiton = Win32GetWindowDimension(Window);
 				Win32UpdateWindow(&GlobalBackBuffer, DeviceContext, Dimensiton.Width, Dimensiton.Height);
