@@ -66,13 +66,15 @@ struct ButtonActions
 
 struct Win32_output_sound
 {
-	int samplesPersecond = 44100;
+	int samplesPersecond = 48000;
 	int waveCounter = 0;
-	int Hz = 440;
-	int wavePeriod = 48000 / 440;
+	int sTone = 120;
+	int wavePeriod = samplesPersecond / sTone;
 	int bytesPersample = sizeof(int16) * 2;
 	int SecondaryBufferSize = samplesPersecond*bytesPersample;
 	uint32 runningSampleIndex = 0;
+	real32 tSine;
+	int latancySampleCount = samplesPersecond / 60;
 
 };
 
@@ -138,7 +140,7 @@ internal ButtonActions getButtonAction(XINPUT_GAMEPAD *Pad)
 }
 
 internal void
-Win32FillSoundBuffer(Win32_output_sound *soundOutput,  DWORD bytesToLock, DWORD bytesToWrite)
+Win32FillSoundBuffer(Win32_output_sound *soundOutput,   DWORD bytesToLock, DWORD bytesToWrite)
 {
 	VOID *region1;
 	DWORD region1Size;
@@ -151,24 +153,24 @@ Win32FillSoundBuffer(Win32_output_sound *soundOutput,  DWORD bytesToLock, DWORD 
 		int16 *sampleOut = (int16 *)region1;
 		for (DWORD sampleIndex = 0; sampleIndex < resion1SampleCounter; ++sampleIndex)
 		{
-			real32 T = 2.0f*Pi32*(real32)soundOutput->runningSampleIndex / (real32)soundOutput->wavePeriod;
-			real32 sineValue = sin(T);
+			real32 sineValue = sin(soundOutput->tSine);
 			int16 sampleValue = (int16)(sineValue * 10000);
 			*sampleOut++ = sampleValue;
 			*sampleOut++ = sampleValue;
 			soundOutput->runningSampleIndex++;
+			soundOutput->tSine += 2.0f*Pi32*1.0f / (real32)soundOutput->wavePeriod;
 		}
 	
 		DWORD resion2SampleCounter = region2Size / soundOutput->bytesPersample;
 		sampleOut = (int16 *)region2;
 		for (DWORD sampleIndex = 0; sampleIndex < resion2SampleCounter; ++sampleIndex)
 		{
-			real32 T = 2.0f*Pi32*(real32)soundOutput->runningSampleIndex / (real32)soundOutput->wavePeriod;
-			real32 sineValue = sin(T);
+			real32 sineValue = sin(soundOutput->tSine);
 			int16 sampleValue = (int16)(sineValue * 10000);
 			*sampleOut++ = sampleValue;
 			*sampleOut++ = sampleValue;
 			soundOutput->runningSampleIndex++;
+			soundOutput->tSine += 2.0f*Pi32*1.0f / (real32)soundOutput->wavePeriod;
 		}
 	}
 	SecondaryBuffer->Unlock(region1, region1Size, region2, region2Size);
@@ -375,9 +377,10 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 			HDC DeviceContext = GetDC(Window);
 			uint8 XOffset = 0;
 			uint8 YOffset = 0;
+			int sTone;
 			Win32_output_sound soundOutput = {};
 			Win32InitDSound(Window, soundOutput.samplesPersecond, soundOutput.SecondaryBufferSize);
-			Win32FillSoundBuffer(&soundOutput, 0, soundOutput.SecondaryBufferSize);
+			Win32FillSoundBuffer(&soundOutput, 0, soundOutput.latancySampleCount*soundOutput.SecondaryBufferSize);
 			GlobalRunning = true;
 			BOOL isSoundPlaying = false;
 			while (GlobalRunning){
@@ -422,13 +425,33 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 							XOffset++;
 							XInputSetState(0, &Vibration);
 						}
-						if (actionButt.Right){
+						if (actionButt.Right)
+						{
 							Vibration.wRightMotorSpeed = 1024;
 							XOffset--;
 							XInputSetState(0, &Vibration);
 						}
+						if (actionButt.ButA)
+						{
+							soundOutput.sTone = 440;
+						}
+						if (actionButt.ButB)
+						{
+							soundOutput.sTone = 262;
+						}
+						if (actionButt.ButY)
+						{
+							soundOutput.sTone = 880;
+						}
+						if (actionButt.ButX)
+						{
+							soundOutput.sTone = 350;
+						}
 
-						XInputSetState(0, &Vibration);
+						//soundOutput.sTone = 250 + (int)(250.0f*((real32)actionButt.StickY / 30000.0f));
+						if (soundOutput.sTone != 0)	soundOutput.wavePeriod = soundOutput.samplesPersecond / soundOutput.sTone;
+						else
+							soundOutput.wavePeriod = 0;
 					}
 					else
 					{
@@ -440,11 +463,13 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				RenderWierdGradient(&GlobalBackBuffer, XOffset, YOffset);
 				DWORD playCursor;
 				DWORD writeCursor;
+				
 				if(SUCCEEDED(SecondaryBuffer->GetCurrentPosition(&playCursor,&writeCursor)))
 				{
 					DWORD bytesToLock = soundOutput.runningSampleIndex*soundOutput.bytesPersample%soundOutput.SecondaryBufferSize;
 					DWORD bytesToWrite;
-					if(bytesToLock == playCursor)
+					DWORD targetCursor = (playCursor + soundOutput.latancySampleCount*soundOutput.bytesPersample) %soundOutput.SecondaryBufferSize;
+					/*if (bytesToLock == targetCursor)
 					{
 						if (isSoundPlaying)
 						{
@@ -456,14 +481,16 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 						}
 	
 					}
-					else if (bytesToLock > playCursor)
+					else 
+					*/
+					if (bytesToLock > targetCursor)
 					{
 						bytesToWrite = soundOutput.SecondaryBufferSize - bytesToLock;
-						bytesToWrite += playCursor;
+						bytesToWrite += targetCursor;
 					}
 					else
 					{
-						bytesToWrite = playCursor - bytesToLock;
+						bytesToWrite = targetCursor - bytesToLock;
 					}
 					
 					Win32FillSoundBuffer(&soundOutput, bytesToLock, bytesToWrite);
