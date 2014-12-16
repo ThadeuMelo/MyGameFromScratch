@@ -146,6 +146,7 @@ Win32FillSoundBuffer(Win32_output_sound *soundOutput,   DWORD bytesToLock, DWORD
 	DWORD region1Size;
 	VOID *region2;
 	DWORD region2Size;
+	
 	if (SUCCEEDED(SecondaryBuffer->Lock(bytesToLock, bytesToWrite, &region1, &region1Size, &region2, &region2Size, 0)))
 	{
 		DWORD resion1SampleCounter = region1Size / soundOutput->bytesPersample;
@@ -178,10 +179,10 @@ Win32FillSoundBuffer(Win32_output_sound *soundOutput,   DWORD bytesToLock, DWORD
 internal void 
 Wind32LoadXInput(void)
 {
-	HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll");
+	HMODULE XInputLibrary = LoadLibrary("xinput1_4.dll");
 	if(!XInputLibrary)
 	{
-		XInputLibrary = LoadLibraryA("xinput1_3.dll");
+		XInputLibrary = LoadLibrary("xinput1_3.dll");
 	}
 	if (XInputLibrary)
 	{
@@ -206,7 +207,7 @@ internal void
 Win32InitDSound(HWND Window, int32 samplesPerSecond, int32 BufferSize)
 {
 	//Load Direct Sound Library
-	HMODULE DSoundLibrary = LoadLibraryA("dsound.dll");
+	HMODULE DSoundLibrary = LoadLibrary("dsound.dll");
 
 	if (DSoundLibrary)
 	{
@@ -237,11 +238,11 @@ Win32InitDSound(HWND Window, int32 samplesPerSecond, int32 BufferSize)
 					HRESULT Error_cd = PrimaryBuffer->SetFormat(&WaveFormat);
 					if (SUCCEEDED(Error_cd))
 					{
-						OutputDebugStringA("PrimaryBuffer set");
+						OutputDebugString("PrimaryBuffer set");
 					}
 					else
 					{
-						OutputDebugStringA("PrimaryBuffer not set");
+						OutputDebugString("PrimaryBuffer not set");
 					}
 				}
 			}
@@ -255,11 +256,11 @@ Win32InitDSound(HWND Window, int32 samplesPerSecond, int32 BufferSize)
 			HRESULT Error_cd = DirectSound->CreateSoundBuffer(&BufferDescription, &SecondaryBuffer, 0);
 			if (SUCCEEDED(Error_cd))
 			{
-				OutputDebugStringA("Secondary set");
+				OutputDebugString("Secondary set");
 			}
 			else
 			{
-				OutputDebugStringA("Secondary not set");
+				OutputDebugString("Secondary not set");
 			}
 
 		}
@@ -347,7 +348,7 @@ Win32ResizeDIBSection(Win32_Off_Screen_Buffer *Buffer, int Width, int Height)
 
 
 LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
-	WNDCLASSA WindowClass = {};
+	WNDCLASS WindowClass = {};
 	//TODO(casey) : Check if
 
 	WindowClass.style = CS_OWNDC|CS_HREDRAW|CS_VREDRAW;
@@ -355,12 +356,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 	WindowClass.hInstance = Instance;
 	WindowClass.lpszClassName = "HandmadeHeroWindowClass";
 
-	LARGE_INTEGER performanceFrequencyResult;
-	QueryPerformanceFrequency(&performanceFrequencyResult);
-
-	int64 perfFreqCount = performanceFrequencyResult.QuadPart;
-
-	if (RegisterClassA(&WindowClass))
+	if (RegisterClass(&WindowClass))
 	{
 		HWND Window = CreateWindowExA(
 			0,
@@ -387,13 +383,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 			Win32FillSoundBuffer(&soundOutput, 0, soundOutput.latancySampleCount*soundOutput.SecondaryBufferSize);
 			GlobalRunning = true;
 			BOOL isSoundPlaying = false;
-
-			LARGE_INTEGER begCounter; // Starting the clock
-			QueryPerformanceCounter(&begCounter);
-
 			while (GlobalRunning){
-
-				begCounter.QuadPart;
 				MSG Message;
 				while(PeekMessage( &Message,  0,0,0, PM_REMOVE)) 
 				{
@@ -514,15 +504,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				}
 				Win32_Window_Dimension Dimensiton = Win32GetWindowDimension(Window);
 				Win32UpdateWindow(&GlobalBackBuffer, DeviceContext, Dimensiton.Width, Dimensiton.Height);
-				LARGE_INTEGER endCounter;
-				QueryPerformanceCounter(&endCounter);
 
-				int64 elapsedCounter = endCounter.QuadPart - begCounter.QuadPart; // how much time has passed in the running cycle
-				int64 milSecPerFrem = (1000*elapsedCounter )/ perfFreqCount;
-				char strBuffer[264];
-				wsprintfA(strBuffer, "Milisecond/Frame = %d", milSecPerFrem);
-				OutputDebugStringA(strBuffer);
-				begCounter = endCounter;
 			}
 
 		}
