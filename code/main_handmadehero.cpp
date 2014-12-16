@@ -520,7 +520,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				int64 elapsedCounter = endCounter.QuadPart - begCounter.QuadPart; // how much time has passed in the running cycle
 				int64 milSecPerFrem = (1000*elapsedCounter )/ perfFreqCount;
 				char strBuffer[264];
-				wsprintfA(strBuffer, "Milisecond/Frame = %d", milSecPerFrem);
+				wsprintfA(strBuffer, "Milisecond/Frame = %d\n", milSecPerFrem);
 				OutputDebugStringA(strBuffer);
 				begCounter = endCounter;
 			}
