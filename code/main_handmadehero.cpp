@@ -390,6 +390,8 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 
 			LARGE_INTEGER begCounter; // Starting the clock
 			QueryPerformanceCounter(&begCounter);
+			
+			int64 LastCycleCount =  __rdtsc();
 
 			while (GlobalRunning){
 
@@ -514,15 +516,22 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				}
 				Win32_Window_Dimension Dimensiton = Win32GetWindowDimension(Window);
 				Win32UpdateWindow(&GlobalBackBuffer, DeviceContext, Dimensiton.Width, Dimensiton.Height);
+
+				int64 endCycleCount =  __rdtsc();
+				int64 elapsedCycleCount =  endCycleCount - lastCycleCount;
+				
 				LARGE_INTEGER endCounter;
 				QueryPerformanceCounter(&endCounter);
-
+				
 				int64 elapsedCounter = endCounter.QuadPart - begCounter.QuadPart; // how much time has passed in the running cycle
 				int64 milSecPerFrem = (1000*elapsedCounter )/ perfFreqCount;
+				int32 MCPF = (int32)(elapsedCycleCount/(1000*1000)); //Mega cycles per frame
+				int32 FPS = perfFreqCount/elapsedCounter;
 				char strBuffer[264];
-				wsprintfA(strBuffer, "Milisecond/Frame = %d\n", milSecPerFrem);
+				wsprintfA(strBuffer, "Milisecond/Frame = %d\n _ FPS = %d _ MC/F = %d\n", milSecPerFrem, FPS, MCPF );
 				OutputDebugStringA(strBuffer);
 				begCounter = endCounter;
+				lastCycleCount = endCycleCount;
 			}
 
 		}
