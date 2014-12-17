@@ -518,7 +518,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				Win32UpdateWindow(&GlobalBackBuffer, DeviceContext, Dimensiton.Width, Dimensiton.Height);
 
 				int64 endCycleCount =  __rdtsc();
-				int64 elapsedCycleCount =  endCycleCount - lastCycleCount;
+				int64 elapsedCycleCount =  endCycleCount - LastCycleCount;
 				
 				LARGE_INTEGER endCounter;
 				QueryPerformanceCounter(&endCounter);
@@ -531,7 +531,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				wsprintfA(strBuffer, "Milisecond/Frame = %d\n _ FPS = %d _ MC/F = %d\n", milSecPerFrem, FPS, MCPF );
 				OutputDebugStringA(strBuffer);
 				begCounter = endCounter;
-				lastCycleCount = endCycleCount;
+				LastCycleCount = endCycleCount;
 			}
 
 		}
