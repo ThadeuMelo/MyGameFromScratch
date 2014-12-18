@@ -1,5 +1,5 @@
 @echo off
 mkdir ..\..\build
 pushd ..\..\build
-devenv main_handmadehero.exe
+devenv Win32_main_handmadehero.exe
 popd
