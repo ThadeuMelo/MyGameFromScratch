@@ -1,23 +1,20 @@
 
 #include "handmadehero.h"
 
-
-
 /*
 Controler/keyboard input
 sound output
 bitmap output
 */
-struct Game_Off_Screen_Buffer
+
+internal void
+mainGameLoop(void)
 {
-	void *Memory;
-	int Width;
-	int Height;
-	int Pitch;
-};
+
+}
 
 internal void 
-RenderWierdGradient(Game_Off_Screen_Buffer *Buffer, int XOffset, int YOffset)
+RenderWierdGradient(game_Off_Screen_Buffer *Buffer, int XOffset, int YOffset)
 {	
 	int Pitch = Buffer->Width*(BYTES_PER_PIXEL);
 	uint8 *Row = (uint8 *) Buffer->Memory;
@@ -46,7 +43,7 @@ RenderWierdGradient(Game_Off_Screen_Buffer *Buffer, int XOffset, int YOffset)
 	}
 }
 
-internal void GameUpdateAndRander(Game_Off_Screen_Buffer *Buffer)
+internal void GameUpdateAndRander(game_Off_Screen_Buffer *Buffer)
 {
 
 	RenderWierdGradient(Buffer, 0, 0);

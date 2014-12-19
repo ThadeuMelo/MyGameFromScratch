@@ -25,5 +25,15 @@ typedef int64_t int64;
 typedef float real32;
 typedef double real64;
 
+struct game_Off_Screen_Buffer
+{
+	void *Memory;
+	int Width;
+	int Height;
+	int Pitch;
+};
+
 internal float platformImpl(char *value);
 internal void mainGameLoop(void);
+internal void  RenderWierdGradient(game_Off_Screen_Buffer *Buffer, int XOffset, int YOffset);
+internal void GameUpdateAndRander(game_Off_Screen_Buffer *Buffer);

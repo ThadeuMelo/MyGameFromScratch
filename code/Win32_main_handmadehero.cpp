@@ -1,14 +1,7 @@
 //This is my first game from scratch!!
 
 
-#include "handmadehero.h"
-#include "mainGameLoop.cpp"
 #include "handmadehero.cpp"
-
-
-typedef double real64;
-
-
 
 global_variable bool GlobalRunning;
 
@@ -428,7 +421,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 					}
 				}
 
-				Game_Off_Screen_Buffer GameBuffer = {};
+				game_Off_Screen_Buffer GameBuffer = {};
 				
 				GameBuffer.Memory = GlobalBackBuffer.Memory;
 				GameBuffer.Width = GlobalBackBuffer.Width;
