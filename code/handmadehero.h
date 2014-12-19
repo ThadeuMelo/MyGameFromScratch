@@ -25,5 +25,5 @@ typedef int64_t int64;
 typedef float real32;
 typedef double real64;
 
-float platformImpl(char *value);
-void mainGameLoop(void);
+internal float platformImpl(char *value);
+internal void mainGameLoop(void);

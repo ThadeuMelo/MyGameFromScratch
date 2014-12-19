@@ -1,31 +1,11 @@
 //This is my first game from scratch!!
 
-#include <windows.h>
-#include <stdint.h>
-#include <xinput.h>
-#include <dsound.h>
-#include <math.h>
+
+#include "handmadehero.h"
 #include "mainGameLoop.cpp"
+#include "handmadehero.cpp"
 
-#define local_persist static
-#define global_variable static
-#define internal static
 
-#define PIXEL_BIT_COUNT 32
-#define BYTES_PER_PIXEL 4
-#define Pi32 3.14159265359f
-
-typedef uint8_t uint8;
-typedef uint16_t uint16;
-typedef uint32_t uint32;
-typedef uint64_t uint64;
-
-typedef int8_t int8;
-typedef int16_t int16;
-typedef int32_t int32;
-typedef int64_t int64;
-
-typedef float real32;
 typedef double real64;
 
 
@@ -278,39 +258,6 @@ Win32InitDSound(HWND Window, int32 samplesPerSecond, int32 BufferSize)
 	}
 }
 
-
-internal void 
-RenderWierdGradient(Win32_Off_Screen_Buffer *Buffer, int XOffset, int YOffset)
-{
-
-	
-	int Pitch = Buffer->Width*(BYTES_PER_PIXEL);
-	uint8 *Row = (uint8 *) Buffer->Memory;
-	
-	for(int Y = 0; Y < Buffer->Height; ++Y)
-	{
-		uint32 *Pixel = (uint32 *) Row;
-		for(int X = 0; X < Buffer->Width; ++X)
-		{
-			uint8 Blue ;
-			uint8 Green ;
-			uint8 Red = 0;
-			
-			if (X > Buffer->Width/2){
-				Blue = 0;
-				Red = (X + XOffset);
-			}else
-			{
-				Blue = (X + XOffset);
-				Green = (Y + YOffset);
-				Red = 0;
-			}
-			*Pixel++ = ((Red<<16)|(Green<<8)|Blue);
-		}
-		Row += Pitch;
-	}
-}
-
 internal void 
 Win32UpdateWindow( Win32_Off_Screen_Buffer *Buffer, HDC DeviceContext,
 					int WindowWidth, int WindowHeight)
@@ -481,8 +428,14 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 					}
 				}
 
-
-				RenderWierdGradient(&GlobalBackBuffer, XOffset, YOffset);
+				Game_Off_Screen_Buffer GameBuffer = {};
+				
+				GameBuffer.Memory = GlobalBackBuffer.Memory;
+				GameBuffer.Width = GlobalBackBuffer.Width;
+				GameBuffer.Height = GlobalBackBuffer.Height;
+				GameBuffer.Pitch = GlobalBackBuffer.Pitch;
+				
+				GameUpdateAndRander(&GameBuffer);
 				DWORD playCursor;
 				DWORD writeCursor;
 				
@@ -582,7 +535,8 @@ LRESULT CALLBACK Win32MainWindowCallBack(
 			int Width = Paint.rcPaint.right - Paint.rcPaint.left;
 			
 			Win32_Window_Dimension Dimension = Win32GetWindowDimension(Window);
-			RenderWierdGradient(&GlobalBackBuffer, Width, Height);
+			//RenderWierdGradient(&GlobalBackBuffer, Width, Height);
+			
 			Win32UpdateWindow(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
 			EndPaint(Window, &Paint);
 		} break;
