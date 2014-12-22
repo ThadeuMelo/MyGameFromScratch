@@ -42,23 +42,9 @@ RenderWierdGradient(game_Off_Screen_Buffer *Buffer, int XOffset, int YOffset)
 		Row += Pitch;
 	}
 }
-internal void GameOutputSound(game_sound_output_buffer *SoundBuffer)
+
+internal void GameUpdateAndRander(game_Off_Screen_Buffer *Buffer)
 {
-		int16 toneVolume = 3000;
-		int16 toneHz = 440;
-		int16 wavePeriod = SoundBuffer->samplesPerSecond/toneHz;
-		int16 *sampleOut = SoundBuffer->samples;
-		for (DWORD sampleIndex = 0; sampleIndex < SoundBuffer->sampleCount; ++sampleIndex)
-		{
-			real32 sineValue = sin(SoundBuffer->tSine);
-			int16 sampleValue = (int16)(sineValue * toneVolume);
-			*sampleOut++ = sampleValue;
-			*sampleOut++ = sampleValue;
-			SoundBuffer->tSine += 2.0f*Pi32*1.0f / (real32)wavePeriod;
-		}
-}
-internal void GameUpdateAndRander(game_Off_Screen_Buffer *Buffer, game_sound_output_buffer *SoundBuffer)
-{
-	GameOutputSound(SoundBuffer);
+
 	RenderWierdGradient(Buffer, 0, 0);
 }
