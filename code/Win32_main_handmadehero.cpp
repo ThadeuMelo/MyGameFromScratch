@@ -438,12 +438,35 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 					// Controller is not connected 
 					}
 				}
+				
+				DWORD bytesToLock;
+				DWORD bytesToWrite;
+				DWORD targetCursor;
+				DWORD playCursor;
+				DWORD writeCursor;
+				
+				bool isSoundValid = false ;
+				if(SUCCEEDED(SecondaryBuffer->GetCurrentPosition(&playCursor,&writeCursor)))
+				{
+					bytesToLock = soundOutput.runningSampleIndex*soundOutput.bytesPersample%soundOutput.SecondaryBufferSize;
+					targetCursor = (playCursor + soundOutput.latancySampleCount*soundOutput.bytesPersample) %soundOutput.SecondaryBufferSize;
 
-				int16 Samples[(48000/30)*2];
+					if (bytesToLock > targetCursor)
+					{
+						bytesToWrite = soundOutput.SecondaryBufferSize - bytesToLock;
+						bytesToWrite += targetCursor;
+					}
+					else
+					{
+						bytesToWrite = targetCursor - bytesToLock;
+					}
+					isSoundValid = true;
+				}
+				int16 Samples[(48000)*2];
 				game_sound_output_buffer SoundBuffer = {};
 
 				SoundBuffer.samplesPerSecond = soundOutput.samplesPersecond;
-				SoundBuffer.sampleCount = SoundBuffer.samplesPerSecond / 30;
+				SoundBuffer.sampleCount = bytesToWrite/soundOutput.bytesPersample;
 				SoundBuffer.samples = Samples;
 
 				game_Off_Screen_Buffer GameBuffer = {};
@@ -454,37 +477,10 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				GameBuffer.Pitch = GlobalBackBuffer.Pitch;
 				
 				GameUpdateAndRander(&GameBuffer, &SoundBuffer);
-				DWORD playCursor;
-				DWORD writeCursor;
 				
-				if(SUCCEEDED(SecondaryBuffer->GetCurrentPosition(&playCursor,&writeCursor)))
+				if(isSoundValid)
 				{
-					DWORD bytesToLock = soundOutput.runningSampleIndex*soundOutput.bytesPersample%soundOutput.SecondaryBufferSize;
-					DWORD bytesToWrite;
-					DWORD targetCursor = (playCursor + soundOutput.latancySampleCount*soundOutput.bytesPersample) %soundOutput.SecondaryBufferSize;
-					/*if (bytesToLock == targetCursor)
-					{
-						if (isSoundPlaying)
-						{
-							bytesToWrite = 0;
-						}
-						else
-						{
-							bytesToWrite = soundOutput.SecondaryBufferSize;
-						}
-	
-					}
-					else 
-					*/
-					if (bytesToLock > targetCursor)
-					{
-						bytesToWrite = soundOutput.SecondaryBufferSize - bytesToLock;
-						bytesToWrite += targetCursor;
-					}
-					else
-					{
-						bytesToWrite = targetCursor - bytesToLock;
-					}
+
 					
 					Win32FillSoundBuffer(&soundOutput, &SoundBuffer, bytesToLock, bytesToWrite);
 
