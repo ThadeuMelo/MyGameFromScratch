@@ -33,6 +33,15 @@ struct game_Off_Screen_Buffer
 	int Pitch;
 };
 
+struct game_sound_output_buffer
+{
+	int sampleCount;
+	real32 tSine;
+	int32 samplesPerSecond;
+	int16 *samples;
+	
+};
+
 internal float platformImpl(char *value);
 internal void mainGameLoop(void);
 internal void  RenderWierdGradient(game_Off_Screen_Buffer *Buffer, int XOffset, int YOffset);
