@@ -21,22 +21,6 @@ struct Win32_Window_Dimension
 	int Height;
 };
 
-struct ButtonActions
-{
-	bool Up;
-	bool Down;
-	bool Left;
-	bool Right; 
-	bool ButA;
-	bool ButB;
-	bool ButX;
-	bool ButY;
-	bool LeftSh;
-	bool RigtSh;
-	
-	int16 StickX;
-	int16 StickY;
-};
 
 struct Win32_output_sound
 {
@@ -100,25 +84,25 @@ float platformImpl(char *value)
 	return 2;
 }
 
-
-internal ButtonActions getButtonAction(XINPUT_GAMEPAD *Pad)
+internal ButtonActions WIN32_getButtonAction(XINPUT_GAMEPAD *Pad)
 {
 	ButtonActions tempButtAct;
 	tempButtAct.Up 	=	(Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
-	tempButtAct.Down = 	(Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
-	tempButtAct.Left = 	(Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
-	tempButtAct.Right = 	(Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
-	tempButtAct.ButA = 	(Pad->wButtons & XINPUT_GAMEPAD_A);
-	tempButtAct.ButB = 	(Pad->wButtons & XINPUT_GAMEPAD_B);
-	tempButtAct.ButX = 	(Pad->wButtons & XINPUT_GAMEPAD_X);
-	tempButtAct.ButY = 	(Pad->wButtons & XINPUT_GAMEPAD_Y);
-	tempButtAct.LeftSh = 	(Pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
-	tempButtAct.RigtSh = 	(Pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
-	tempButtAct.StickX = 	Pad->sThumbLX;
-	tempButtAct.StickY = 	Pad->sThumbLY;
+	tempButtAct.Down = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
+	tempButtAct.Left = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
+	tempButtAct.Right = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
+	tempButtAct.ButA = (Pad->wButtons & XINPUT_GAMEPAD_A);
+	tempButtAct.ButB = (Pad->wButtons & XINPUT_GAMEPAD_B);
+	tempButtAct.ButX = (Pad->wButtons & XINPUT_GAMEPAD_X);
+	tempButtAct.ButY = (Pad->wButtons & XINPUT_GAMEPAD_Y);
+	tempButtAct.LeftSh = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
+	tempButtAct.RigtSh = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
+	tempButtAct.StickX = Pad->sThumbLX;
+	tempButtAct.StickY = Pad->sThumbLY;
 	
 	return tempButtAct;
 }
+
 
 internal void
 Win32ClearSoundBuffer(Win32_output_sound *soundOutput)
@@ -351,7 +335,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 			HDC DeviceContext = GetDC(Window);
 			uint8 XOffset = 0;
 			uint8 YOffset = 0;
-			int sTone;
+			uint16 sTone = 440;
 			Win32_output_sound soundOutput = {};
 			Win32InitDSound(Window, soundOutput.samplesPersecond, soundOutput.SecondaryBufferSize);
 			Win32ClearSoundBuffer(&soundOutput);
@@ -379,6 +363,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 					DispatchMessage(&Message);				
 				}
 				XINPUT_VIBRATION Vibration;
+				ButtonActions actionButt;
 				for (DWORD ControllerIndex = 0; ControllerIndex< XUSER_MAX_COUNT; ControllerIndex++ )
 				{
 					XINPUT_STATE controlerState;
@@ -389,53 +374,11 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 					if (XInputGetState(ControllerIndex, &controlerState) == ERROR_SUCCESS) // Controller is connected 
 					{
 						XINPUT_GAMEPAD *Pad = &controlerState.Gamepad;
-						ButtonActions actionButt = getButtonAction(Pad);
+						actionButt = WIN32_getButtonAction(Pad);
 					
 						Vibration.wLeftMotorSpeed = 0;
-						Vibration.wLeftMotorSpeed = 0;
-						
-						if(actionButt.Up) 
-						{
-							YOffset++;
-							Vibration.wLeftMotorSpeed = 6024;
-							Vibration.wRightMotorSpeed = 6024;
-							XInputSetState(0, &Vibration);
-							
-						}
-						if(actionButt.Down) YOffset--;
-						if (actionButt.Left)
-						{
-							Vibration.wLeftMotorSpeed = 1024;
-							XOffset++;
-							XInputSetState(0, &Vibration);
-						}
-						if (actionButt.Right)
-						{
-							Vibration.wRightMotorSpeed = 1024;
-							XOffset--;
-							XInputSetState(0, &Vibration);
-						}
-						if (actionButt.ButA)
-						{
-							soundOutput.sTone = 440;
-						}
-						if (actionButt.ButB)
-						{
-							soundOutput.sTone = 262;
-						}
-						if (actionButt.ButY)
-						{
-							soundOutput.sTone = 880;
-						}
-						if (actionButt.ButX)
-						{
-							soundOutput.sTone = 350;
-						}
 
-						//soundOutput.sTone = 250 + (int)(250.0f*((real32)actionButt.StickY / 30000.0f));
-						if (soundOutput.sTone != 0)	soundOutput.wavePeriod = soundOutput.samplesPersecond / soundOutput.sTone;
-						else
-							soundOutput.wavePeriod = 0;
+						
 					}
 					else
 					{
@@ -480,7 +423,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				GameBuffer.Height = GlobalBackBuffer.Height;
 				GameBuffer.Pitch = GlobalBackBuffer.Pitch;
 				
-				GameUpdateAndRander(&GameBuffer, &SoundBuffer);
+				GameUpdateAndRander(&GameBuffer, &SoundBuffer, &actionButt, &XOffset, &YOffset, &sTone);
 				
 				if (isSoundValid)
 				{

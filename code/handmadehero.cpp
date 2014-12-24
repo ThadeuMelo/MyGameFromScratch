@@ -13,11 +13,48 @@ mainGameLoop(void)
 
 }
 
-internal void GameOutputSound(game_sound_output_buffer *SoundBuffer)
+internal void GameUserInput(ButtonActions *actionButt, uint8 *XOffset, uint8 *YOffset, uint16 *sTone)
+{
+	if (actionButt->Up)
+	{
+		(*YOffset)++;
+	}
+	if (actionButt->Down)
+	{
+		(*YOffset)--;
+	}
+	if (actionButt->Left)
+	{
+		(*XOffset)++;
+	}
+	if (actionButt->Right)
+	{
+
+		(*XOffset)--;
+
+	}
+
+	if (actionButt->ButB)
+	{
+		*sTone = 262;
+	}
+	if (actionButt->ButY)
+	{
+		*sTone = 880;
+	}
+	if (actionButt->ButX)
+	{
+		*sTone = 350;
+	}
+}
+internal void GameOutputSound(game_sound_output_buffer *SoundBuffer, uint16 toneHz)
 {
 	local_persist real32 tSine;
 		int16 toneVolume = 3000;
-		int16 toneHz = 440;
+		if (toneHz == 0)
+		{
+			toneHz = 440;
+		}
 		int16 wavePeriod = SoundBuffer->samplesPerSecond/toneHz;
 		int16 *sampleOut = SoundBuffer->samples;
 		for (DWORD sampleIndex = 0; sampleIndex < SoundBuffer->sampleCount; ++sampleIndex)
@@ -60,8 +97,13 @@ RenderWierdGradient(game_Off_Screen_Buffer *Buffer, int XOffset, int YOffset)
 	}
 }
 
-internal void GameUpdateAndRander(game_Off_Screen_Buffer *Buffer, game_sound_output_buffer *SoundBuffer)
+internal void GameUpdateAndRander(game_Off_Screen_Buffer *Buffer, 
+									game_sound_output_buffer *SoundBuffer, 
+									ButtonActions *actionButt, 
+									uint8 *XOffset, uint8 *YOffset, uint16 *toneHz)
 {
-	GameOutputSound(SoundBuffer);
-	RenderWierdGradient(Buffer, 0, 0);
+
+	GameUserInput(actionButt, XOffset, YOffset, toneHz);
+	GameOutputSound(SoundBuffer, *toneHz);
+	RenderWierdGradient(Buffer, *XOffset, *YOffset);
 }

@@ -42,6 +42,25 @@ struct game_sound_output_buffer
 	
 };
 
+
+
+struct ButtonActions
+{
+	bool Up;
+	bool Down;
+	bool Left;
+	bool Right; 
+	bool ButA;
+	bool ButB;
+	bool ButX;
+	bool ButY;
+	bool LeftSh;
+	bool RigtSh;
+	
+	int16 StickX;
+	int16 StickY;
+};
+
 internal float platformImpl(char *value);
 internal void mainGameLoop(void);
 internal void  RenderWierdGradient(game_Off_Screen_Buffer *Buffer, int XOffset, int YOffset);
