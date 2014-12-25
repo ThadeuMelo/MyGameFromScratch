@@ -25,6 +25,20 @@ typedef int64_t int64;
 typedef float real32;
 typedef double real64;
 
+#if HANDMADE_SLOW
+// TODO(casey): Complete assertion macro - don't worry everyone!
+#define Assert(Expression) if(!(Expression)) {*(int *)0 = 0;}
+#else
+#define Assert(Expression)
+#endif
+
+#define Kilobytes(Value) ((Value)*1024LL)
+#define Megabytes(Value) (Kilobytes(Value)*1024LL)
+#define Gigabytes(Value) (Megabytes(Value)*1024LL)
+#define Terabytes(Value) (Gigabytes(Value)*1024LL)
+
+#define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
+
 struct game_Off_Screen_Buffer
 {
 	void *Memory;
@@ -42,6 +56,42 @@ struct game_sound_output_buffer
 	
 };
 
+struct game_button_state
+{
+    int HalfTransitionCount;
+    bool EndedDown;
+};
+
+struct game_controller_input
+{
+    bool IsAnalog;
+    
+    real32 StartX;
+    real32 StartY;
+
+    real32 MinX;
+    real32 MinY;
+
+    real32 MaxX;
+    real32 MaxY;
+    
+    real32 EndX;
+    real32 EndY;
+    
+    union
+    {
+        game_button_state Buttons[6];
+        struct
+        {
+            game_button_state Up;
+            game_button_state Down;
+            game_button_state Left;
+            game_button_state Right;
+            game_button_state LeftShoulder;
+            game_button_state RightShoulder;
+        };
+    };
+};
 
 
 struct ButtonActions
@@ -60,6 +110,12 @@ struct ButtonActions
 	int16 StickX;
 	int16 StickY;
 };
+
+struct game_input
+{
+    game_controller_input Controllers[4];
+};
+
 
 internal float platformImpl(char *value);
 internal void mainGameLoop(void);

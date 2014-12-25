@@ -84,22 +84,29 @@ float platformImpl(char *value)
 	return 2;
 }
 
-internal ButtonActions WIN32_getButtonAction(XINPUT_GAMEPAD *Pad)
+internal void
+Win32ProcessXInputDigitalButton(DWORD XInputButtonState,
+                                game_button_state *OldState, DWORD ButtonBit,
+                                game_button_state *NewState)
+{
+    NewState->EndedDown = ((XInputButtonState & ButtonBit) == ButtonBit);
+    NewState->HalfTransitionCount = (OldState->EndedDown != NewState->EndedDown) ? 1 : 0;
+}
+
+
+internal ButtonActions WIN32_getButtonAction(DWORD wButtons)
 {
 	ButtonActions tempButtAct;
-	tempButtAct.Up 	=	(Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
-	tempButtAct.Down = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
-	tempButtAct.Left = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
-	tempButtAct.Right = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
-	tempButtAct.ButA = (Pad->wButtons & XINPUT_GAMEPAD_A);
-	tempButtAct.ButB = (Pad->wButtons & XINPUT_GAMEPAD_B);
-	tempButtAct.ButX = (Pad->wButtons & XINPUT_GAMEPAD_X);
-	tempButtAct.ButY = (Pad->wButtons & XINPUT_GAMEPAD_Y);
-	tempButtAct.LeftSh = (Pad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
-	tempButtAct.RigtSh = (Pad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
-	tempButtAct.StickX = Pad->sThumbLX;
-	tempButtAct.StickY = Pad->sThumbLY;
-	
+	tempButtAct.Up 	=	(wButtons & XINPUT_GAMEPAD_DPAD_UP);
+	tempButtAct.Down = (wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
+	tempButtAct.Left = (wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
+	tempButtAct.Right = (wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
+	tempButtAct.ButA = (wButtons & XINPUT_GAMEPAD_A);
+	tempButtAct.ButB = (wButtons & XINPUT_GAMEPAD_B);
+	tempButtAct.ButX = (wButtons & XINPUT_GAMEPAD_X);
+	tempButtAct.ButY = (wButtons & XINPUT_GAMEPAD_Y);
+	tempButtAct.LeftSh = (wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
+	tempButtAct.RigtSh = (wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
 	return tempButtAct;
 }
 
@@ -351,6 +358,10 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 			
 			int16 *Samples = (int16 *)VirtualAlloc(0, soundOutput.SecondaryBufferSize,
                                                    MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+			
+			game_input Input[2] = {};
+            game_input *NewInput = &Input[0];
+            game_input *OldInput = &Input[1];
 
 			LARGE_INTEGER begCounter; // Starting the clock
 			QueryPerformanceCounter(&begCounter);
@@ -373,22 +384,85 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 					DispatchMessage(&Message);				
 				}
 				XINPUT_VIBRATION Vibration;
-				ButtonActions actionButt;
+				ButtonActions actionButt;				
+				
+				int MaxControllerCount = XUSER_MAX_COUNT;
+                if(MaxControllerCount > ArrayCount(NewInput->Controllers))
+                {
+                    MaxControllerCount = ArrayCount(NewInput->Controllers);
+                }
+				
 				for (DWORD ControllerIndex = 0; ControllerIndex< XUSER_MAX_COUNT; ControllerIndex++ )
 				{
-					XINPUT_STATE controlerState;
-					//ZeroMemory( &controlerState, sizeof(XINPUT_STATE) );
+					game_controller_input *OldController = &OldInput->Controllers[ControllerIndex];
+                    game_controller_input *NewController = &NewInput->Controllers[ControllerIndex];
+                    
+                    XINPUT_STATE ControllerState;
+                    if(XInputGetState(ControllerIndex, &ControllerState) == ERROR_SUCCESS)
+                    {
+                        // NOTE(casey): This controller is plugged in
+                        // TODO(casey): See if ControllerState.dwPacketNumber increments too rapidly
+                        XINPUT_GAMEPAD *Pad = &ControllerState.Gamepad;
 
-					// Simply get the controlerState of the controller from XInput.	
+                        // TODO(casey): DPad
+                        bool Up = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
+                        bool Down = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
+                        bool Left = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
+                        bool Right = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
 
-					if (XInputGetState(ControllerIndex, &controlerState) == ERROR_SUCCESS) // Controller is connected 
-					{
-						XINPUT_GAMEPAD *Pad = &controlerState.Gamepad;
-						actionButt = WIN32_getButtonAction(Pad);
-					
-						Vibration.wLeftMotorSpeed = 0;
+                        NewController->IsAnalog = true;
+                        NewController->StartX = OldController->EndX;
+                        NewController->StartY = OldController->EndY;
 
-						
+                        // TODO(casey): Dead zone processing!!
+                        // XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE
+                        // XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE 
+
+                        // TODO(casey): Min/Max macros!!!
+                        // TODO(casey): Collapse to single function
+                        real32 X;
+                        if(Pad->sThumbLX < 0)
+                        {
+                            X = (real32)Pad->sThumbLX / 32768.0f;
+                        }
+                        else
+                        {
+                            X = (real32)Pad->sThumbLX / 32767.0f;
+                        }
+                        NewController->MinX = NewController->MaxX = NewController->EndX = X;
+
+                        real32 Y;
+                        if(Pad->sThumbLY < 0)
+                        {
+                            Y = (real32)Pad->sThumbLY / 32768.0f;
+                        }
+                        else
+                        {
+                            Y = (real32)Pad->sThumbLY / 32767.0f;
+                        }
+                        NewController->MinY = NewController->MaxY = NewController->EndY = Y;
+
+                        Win32ProcessXInputDigitalButton(Pad->wButtons,
+                                                        &OldController->Down, XINPUT_GAMEPAD_A,
+                                                        &NewController->Down);
+                        Win32ProcessXInputDigitalButton(Pad->wButtons,
+                                                        &OldController->Right, XINPUT_GAMEPAD_B,
+                                                        &NewController->Right);
+                        Win32ProcessXInputDigitalButton(Pad->wButtons,
+                                                        &OldController->Left, XINPUT_GAMEPAD_X,
+                                                        &NewController->Left);
+                        Win32ProcessXInputDigitalButton(Pad->wButtons,
+                                                        &OldController->Up, XINPUT_GAMEPAD_Y,
+                                                        &NewController->Up);
+                        Win32ProcessXInputDigitalButton(Pad->wButtons,
+                                                        &OldController->LeftShoulder, XINPUT_GAMEPAD_LEFT_SHOULDER,
+                                                        &NewController->LeftShoulder);
+                        Win32ProcessXInputDigitalButton(Pad->wButtons,
+                                                        &OldController->RightShoulder, XINPUT_GAMEPAD_RIGHT_SHOULDER,
+                                                        &NewController->RightShoulder);
+
+                        // bool32 Start = (Pad->wButtons & XINPUT_GAMEPAD_START);
+                        // bool32 Back = (Pad->wButtons & XINPUT_GAMEPAD_BACK);
 					}
 					else
 					{
@@ -434,7 +508,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				GameBuffer.Height = GlobalBackBuffer.Height;
 				GameBuffer.Pitch = GlobalBackBuffer.Pitch;
 				
-				GameUpdateAndRander(&GameBuffer, &SoundBuffer, &actionButt, &XOffset, &YOffset, &sTone);
+				GameUpdateAndRander(NewInput, &GameBuffer, &SoundBuffer);
 				
 				if (isSoundValid)
 				{
@@ -465,6 +539,10 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				OutputDebugStringA(strBuffer);
 				begCounter = endCounter;
 				LastCycleCount = endCycleCount;
+				
+				game_input *Temp = NewInput;
+                NewInput = OldInput;
+                OldInput = Temp;
 			}
 
 		}

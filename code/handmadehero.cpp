@@ -34,29 +34,26 @@ internal void GameUserInput(ButtonActions *actionButt, uint8 *XOffset, uint8 *YO
 		(*XOffset)--;
 
 	}
-
+	*/
+	static uint16 baseValue = 512;
 	if (actionButt->ButB)
 	{
-		*sTone = 262;
+		baseValue = 262;
 	}
 	if (actionButt->ButY)
 	{
-		*sTone = 880;
+		baseValue = 880;
 	}
 	if (actionButt->ButX)
 	{
-		*sTone = 350;
+		baseValue = 350;
 	}
-	*/
-
-	*XOffset += actionButt->StickX / 4096;
-	*YOffset += actionButt->StickY / 4096;
-
-	uint16 baseValue = 512;
+	
 	if (actionButt->ButA)
 		baseValue = 880;
-	if (actionButt->ButB)
-		baseValue = 110;
+
+	*XOffset -= actionButt->StickX / 4096;
+	*YOffset += actionButt->StickY / 4096;
 
 	*sTone = baseValue + (int)(256.0f*((real32)actionButt->StickY / 30000.0f));
 
@@ -114,13 +111,34 @@ RenderWierdGradient(game_Off_Screen_Buffer *Buffer, int XOffset, int YOffset)
 	}
 }
 
-internal void GameUpdateAndRander(game_Off_Screen_Buffer *Buffer, 
-									game_sound_output_buffer *SoundBuffer, 
-									ButtonActions *actionButt, 
-									uint8 *XOffset, uint8 *YOffset, uint16 *toneHz)
+internal void GameUpdateAndRander(game_input *Input, game_Off_Screen_Buffer *Buffer, 
+									game_sound_output_buffer *SoundBuffer)
 {
 
-	GameUserInput(actionButt, XOffset, YOffset, toneHz);
-	GameOutputSound(SoundBuffer, *toneHz);
-	RenderWierdGradient(Buffer, *XOffset, *YOffset);
+	local_persist int BlueOffset = 0;
+    local_persist int GreenOffset = 0;
+    local_persist uint16 ToneHz = 256;
+
+    game_controller_input *Input0 = &Input->Controllers[0];    
+    if(Input0->IsAnalog)
+    {
+        // NOTE(casey): Use analog movement tuning
+        BlueOffset -= (int)4.0f*(Input0->EndX);
+		GreenOffset += (int)4.0f*(Input0->EndY);
+        ToneHz = 256 + (uint16)(128.0f*(Input0->EndY));
+    }
+    else
+    {
+        // NOTE(casey): Use digital movement tuning
+    }
+
+    // Input.AButtonEndedDown;
+    // Input.AButtonHalfTransitionCount;
+    if(Input0->Down.EndedDown)
+    {
+        GreenOffset += 1;
+    }
+	
+	GameOutputSound(SoundBuffer, ToneHz);
+	RenderWierdGradient(Buffer, BlueOffset, GreenOffset);
 }
