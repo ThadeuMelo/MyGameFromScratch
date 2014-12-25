@@ -15,7 +15,8 @@ mainGameLoop(void)
 
 internal void GameUserInput(ButtonActions *actionButt, uint8 *XOffset, uint8 *YOffset, uint16 *sTone)
 {
-	if (actionButt->Up)
+	
+	/*if (actionButt->Up)
 	{
 		(*YOffset)++;
 	}
@@ -46,6 +47,22 @@ internal void GameUserInput(ButtonActions *actionButt, uint8 *XOffset, uint8 *YO
 	{
 		*sTone = 350;
 	}
+	*/
+
+	*XOffset += actionButt->StickX / 4096;
+	*YOffset += actionButt->StickY / 4096;
+
+	uint16 baseValue = 512;
+	if (actionButt->ButA)
+		baseValue = 880;
+	if (actionButt->ButB)
+		baseValue = 110;
+
+	*sTone = baseValue + (int)(256.0f*((real32)actionButt->StickY / 30000.0f));
+
+	if (*sTone >= 20000)
+		*sTone = 1000;
+
 }
 internal void GameOutputSound(game_sound_output_buffer *SoundBuffer, uint16 toneHz)
 {

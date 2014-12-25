@@ -337,10 +337,20 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 			uint8 YOffset = 0;
 			uint16 sTone = 440;
 			Win32_output_sound soundOutput = {};
+			
+			soundOutput.samplesPersecond = 48000;
+            soundOutput.bytesPersample = sizeof(int16)*2;
+            soundOutput.SecondaryBufferSize = soundOutput.samplesPersecond*soundOutput.bytesPersample;
+            soundOutput.latancySampleCount = soundOutput.samplesPersecond / 15;
+			
 			Win32InitDSound(Window, soundOutput.samplesPersecond, soundOutput.SecondaryBufferSize);
 			Win32ClearSoundBuffer(&soundOutput);
+			
 			GlobalRunning = true;
 			BOOL isSoundPlaying = false;
+			
+			int16 *Samples = (int16 *)VirtualAlloc(0, soundOutput.SecondaryBufferSize,
+                                                   MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 
 			LARGE_INTEGER begCounter; // Starting the clock
 			QueryPerformanceCounter(&begCounter);
@@ -367,7 +377,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				for (DWORD ControllerIndex = 0; ControllerIndex< XUSER_MAX_COUNT; ControllerIndex++ )
 				{
 					XINPUT_STATE controlerState;
-					ZeroMemory( &controlerState, sizeof(XINPUT_STATE) );
+					//ZeroMemory( &controlerState, sizeof(XINPUT_STATE) );
 
 					// Simply get the controlerState of the controller from XInput.	
 
@@ -386,16 +396,18 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 					}
 				}
 
-				DWORD playCursor;
-				DWORD writeCursor;
-				DWORD bytesToLock;
-				DWORD bytesToWrite;
-				DWORD targetCursor;
+				DWORD playCursor = 0;
+				DWORD writeCursor = 0;
+				DWORD bytesToLock = 0;
+				DWORD bytesToWrite = 0;
+				DWORD targetCursor = 0;
 				bool isSoundValid = false;
 				if (SUCCEEDED(SecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor)))
 				{
-					bytesToLock = soundOutput.runningSampleIndex*soundOutput.bytesPersample%soundOutput.SecondaryBufferSize;
-					targetCursor = (playCursor + soundOutput.latancySampleCount*soundOutput.bytesPersample) % soundOutput.SecondaryBufferSize;
+					bytesToLock = (soundOutput.runningSampleIndex*soundOutput.bytesPersample)%soundOutput.SecondaryBufferSize;
+					targetCursor = (playCursor +
+										soundOutput.latancySampleCount*soundOutput.bytesPersample) 
+										% soundOutput.SecondaryBufferSize;
 
 					if (bytesToLock > targetCursor)
 					{
@@ -411,7 +423,6 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 
 				game_sound_output_buffer SoundBuffer ={};
 
-				int16 Samples[48000 * 2];
 				SoundBuffer.samplesPerSecond = soundOutput.samplesPersecond ;
 				SoundBuffer.sampleCount = bytesToWrite/soundOutput.bytesPersample;
 				SoundBuffer.samples = Samples;
