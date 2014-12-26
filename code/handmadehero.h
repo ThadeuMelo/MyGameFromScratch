@@ -116,6 +116,23 @@ struct game_input
     game_controller_input Controllers[4];
 };
 
+struct game_memory
+{
+    bool32 IsInitialized;
+
+    uint64 PermanentStorageSize;
+    void *PermanentStorage; // NOTE(casey): REQUIRED to be cleared to zero at startup
+
+    uint64 TransientStorageSize;
+    void *TransientStorage; // NOTE(casey): REQUIRED to be cleared to zero at startup
+};
+
+struct game_state
+{
+    int ToneHz;
+    int GreenOffset;
+    int BlueOffset;
+};
 
 internal float platformImpl(char *value);
 internal void mainGameLoop(void);
