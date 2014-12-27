@@ -111,21 +111,28 @@ RenderWierdGradient(game_Off_Screen_Buffer *Buffer, int XOffset, int YOffset)
 	}
 }
 
-internal void GameUpdateAndRander(game_input *Input, game_Off_Screen_Buffer *Buffer, 
+internal void GameUpdateAndRander(game_memory *Memory, game_input *Input, game_Off_Screen_Buffer *Buffer, 
 									game_sound_output_buffer *SoundBuffer)
 {
 
-	local_persist int BlueOffset = 0;
-    local_persist int GreenOffset = 0;
-    local_persist uint16 ToneHz = 256;
+    Assert(sizeof(game_state) <= Memory->PermanentStorageSize);
+    
+    game_state *GameState = (game_state *)Memory->PermanentStorage;
+    if(!Memory->IsInitialized)
+    {
+        GameState->ToneHz = 256;
+
+        // TODO(casey): This may be more appropriate to do in the platform layer
+        Memory->IsInitialized = true;
+    }
 
     game_controller_input *Input0 = &Input->Controllers[0];    
     if(Input0->IsAnalog)
     {
         // NOTE(casey): Use analog movement tuning
-        BlueOffset -= (int)4.0f*(Input0->EndX);
-		GreenOffset += (int)4.0f*(Input0->EndY);
-        ToneHz = 256 + (uint16)(128.0f*(Input0->EndY));
+        GameState->BlueOffset -= (int)4.0f*(Input0->EndX);
+		GameState->GreenOffset += (int)4.0f*(Input0->EndY);
+        GameState->ToneHz = 256 + (uint16)(128.0f*(Input0->EndY));
     }
     else
     {
@@ -136,9 +143,9 @@ internal void GameUpdateAndRander(game_input *Input, game_Off_Screen_Buffer *Buf
     // Input.AButtonHalfTransitionCount;
     if(Input0->Down.EndedDown)
     {
-        GreenOffset += 1;
+		GameState->GreenOffset += 1;
     }
 	
-	GameOutputSound(SoundBuffer, ToneHz);
-	RenderWierdGradient(Buffer, BlueOffset, GreenOffset);
+	GameOutputSound(SoundBuffer, GameState->ToneHz);
+	RenderWierdGradient(Buffer, GameState->BlueOffset, GameState->GreenOffset);
 }
