@@ -120,6 +120,14 @@ internal void GameUpdateAndRander(game_memory *Memory, game_input *Input, game_O
     game_state *GameState = (game_state *)Memory->PermanentStorage;
     if(!Memory->IsInitialized)
     {
+		char *Filename = "test.in";
+        
+        debug_read_file_result File = DEBUGPlatformReadEntireFile(Filename);
+        if(File.Contents)
+        {
+            DEBUGPlatformWriteEntireFile("test_out.out", File.ContentsSize, File.Contents);
+            DEBUGPlatformFreeFileMemory(File.Contents);
+        }
         GameState->ToneHz = 256;
 
         // TODO(casey): This may be more appropriate to do in the platform layer

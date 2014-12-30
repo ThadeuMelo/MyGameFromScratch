@@ -1,3 +1,4 @@
+#if !defined(HANDMADEHERO_H)
 #include <windows.h>
 #include <stdint.h>
 #include <xinput.h>
@@ -48,6 +49,16 @@ struct game_Off_Screen_Buffer
 	int Height;
 	int Pitch;
 };
+
+inline uint32
+SafeTruncateUInt64(uint64 Value)
+{
+    // TODO(casey): Defines for maximum values
+    Assert(Value <= 0xFFFFFFFF);
+    uint32 Result = (uint32)Value;
+    return(Result);
+}
+
 
 struct game_sound_output_buffer
 {
@@ -140,3 +151,24 @@ internal float platformImpl(char *value);
 internal void mainGameLoop(void);
 internal void  RenderWierdGradient(game_Off_Screen_Buffer *Buffer, int XOffset, int YOffset);
 internal void GameUpdateAndRander(game_Off_Screen_Buffer *Buffer);
+/*
+  NOTE(casey): Services that the platform layer provides to the game
+*/
+#if 1
+/* IMPORTANT(casey):
+
+   These are NOT for doing anything in the shipping game - they are
+   blocking and the write doesn't protect against lost data!
+*/
+struct debug_read_file_result
+{
+    uint32 ContentsSize;
+    void *Contents;
+};
+internal debug_read_file_result DEBUGPlatformReadEntireFile(char *Filename);
+internal void DEBUGPlatformFreeFileMemory(void *Memory);
+internal bool32 DEBUGPlatformWriteEntireFile(char *Filename, uint32 MemorySize, void *Memory);
+#endif
+
+#define HANDMADEHERO_H
+#endif
