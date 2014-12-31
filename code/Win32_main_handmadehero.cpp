@@ -3,7 +3,7 @@
 
 #include "handmadehero.cpp"
 
-global_variable bool GlobalRunning;
+global_variable bool32 GlobalRunning;
 
 struct Win32_Off_Screen_Buffer
 {
@@ -182,7 +182,7 @@ Win32ProcessXInputDigitalButton(DWORD XInputButtonState,
 }
 
 
-internal ButtonActions WIN32_getButtonAction(DWORD wButtons)
+/*internal ButtonActions WIN32_getButtonAction(DWORD wButtons)
 {
 	ButtonActions tempButtAct;
 	tempButtAct.Up 	=	(wButtons & XINPUT_GAMEPAD_DPAD_UP);
@@ -197,6 +197,7 @@ internal ButtonActions WIN32_getButtonAction(DWORD wButtons)
 	tempButtAct.RigtSh = (wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
 	return tempButtAct;
 }
+*/
 
 
 internal void
@@ -442,7 +443,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 			Win32ClearSoundBuffer(&soundOutput);
 			
 			GlobalRunning = true;
-			BOOL isSoundPlaying = false;
+			bool32 isSoundPlaying = false;
 			
 			int16 *Samples = (int16 *)VirtualAlloc(0, soundOutput.SecondaryBufferSize,
                                                    MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
@@ -459,7 +460,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 			
 			            // TODO(casey): Handle various memory footprints (USING SYSTEM METRICS)
             uint64 TotalSize = GameMemory.PermanentStorageSize + GameMemory.TransientStorageSize;
-            GameMemory.PermanentStorage = VirtualAlloc(BaseAddress, TotalSize,
+            GameMemory.PermanentStorage = VirtualAlloc(BaseAddress, (size_t)TotalSize,
                                                        MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
             GameMemory.TransientStorage = ((uint8 *)GameMemory.PermanentStorage +
                                            GameMemory.PermanentStorageSize);
@@ -477,8 +478,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				while (GlobalRunning)
 				{
 
-					mainGameLoop();
-
+					
 					begCounter.QuadPart;
 					MSG Message;
 					while(PeekMessage( &Message,  0,0,0, PM_REMOVE)) 
@@ -490,8 +490,8 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 						TranslateMessage(&Message);
 						DispatchMessage(&Message);				
 					}
-					XINPUT_VIBRATION Vibration;
-					ButtonActions actionButt;				
+					//XINPUT_VIBRATION Vibration;
+					//ButtonActions actionButt;				
 					
 					int MaxControllerCount = XUSER_MAX_COUNT;
 					if(MaxControllerCount > ArrayCount(NewInput->Controllers))
@@ -512,10 +512,10 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 							XINPUT_GAMEPAD *Pad = &ControllerState.Gamepad;
 
 							// TODO(casey): DPad
-							bool Up = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
-							bool Down = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
-							bool Left = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
-							bool Right = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
+							bool32 Up = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
+							bool32 Down = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
+							bool32 Left = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
+							bool32 Right = (Pad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
 
 							NewController->IsAnalog = true;
 							NewController->StartX = OldController->EndX;
@@ -568,8 +568,8 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 															&OldController->RightShoulder, XINPUT_GAMEPAD_RIGHT_SHOULDER,
 															&NewController->RightShoulder);
 
-							// bool32 Start = (Pad->wButtons & XINPUT_GAMEPAD_START);
-							// bool32 Back = (Pad->wButtons & XINPUT_GAMEPAD_BACK);
+							// bool3232 Start = (Pad->wButtons & XINPUT_GAMEPAD_START);
+							// bool3232 Back = (Pad->wButtons & XINPUT_GAMEPAD_BACK);
 						}
 						else
 						{
@@ -582,7 +582,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 					DWORD bytesToLock = 0;
 					DWORD bytesToWrite = 0;
 					DWORD targetCursor = 0;
-					bool isSoundValid = false;
+					bool32 isSoundValid = false;
 					if (SUCCEEDED(SecondaryBuffer->GetCurrentPosition(&playCursor, &writeCursor)))
 					{
 						bytesToLock = (soundOutput.runningSampleIndex*soundOutput.bytesPersample)%soundOutput.SecondaryBufferSize;
@@ -640,7 +640,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 					int64 elapsedCounter = endCounter.QuadPart - begCounter.QuadPart; // how much time has passed in the running cycle
 					int64 milSecPerFrem = (1000*elapsedCounter )/ perfFreqCount;
 					int32 MCPF = (int32)(elapsedCycleCount/(1000*1000)); //Mega cycles per frame
-					int32 FPS = perfFreqCount/elapsedCounter;
+					int32 FPS = (int32)(perfFreqCount/elapsedCounter);
 					char strBuffer[264];
 					wsprintfA(strBuffer, "Milisecond/Frame = %d\n _ FPS = %d _ MC/F = %d\n", milSecPerFrem, FPS, MCPF );
 					OutputDebugStringA(strBuffer);

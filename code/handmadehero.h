@@ -72,12 +72,12 @@ struct game_sound_output_buffer
 struct game_button_state
 {
     int HalfTransitionCount;
-    bool EndedDown;
+    bool32 EndedDown;
 };
 
 struct game_controller_input
 {
-    bool IsAnalog;
+    bool32 IsAnalog;
     
     real32 StartX;
     real32 StartY;
@@ -109,16 +109,16 @@ struct game_controller_input
 
 struct ButtonActions
 {
-	bool Up;
-	bool Down;
-	bool Left;
-	bool Right; 
-	bool ButA;
-	bool ButB;
-	bool ButX;
-	bool ButY;
-	bool LeftSh;
-	bool RigtSh;
+	bool32 Up;
+	bool32 Down;
+	bool32 Left;
+	bool32 Right; 
+	bool32 ButA;
+	bool32 ButB;
+	bool32 ButX;
+	bool32 ButY;
+	bool32 LeftSh;
+	bool32 RigtSh;
 	
 	int16 StickX;
 	int16 StickY;
@@ -147,8 +147,7 @@ struct game_state
     int BlueOffset;
 };
 
-internal float platformImpl(char *value);
-internal void mainGameLoop(void);
+
 internal void  RenderWierdGradient(game_Off_Screen_Buffer *Buffer, int XOffset, int YOffset);
 internal void GameUpdateAndRander(game_Off_Screen_Buffer *Buffer);
 /*

@@ -7,12 +7,7 @@ sound output
 bitmap output
 */
 
-internal void
-mainGameLoop(void)
-{
-
-}
-
+/*
 internal void GameUserInput(ButtonActions *actionButt, uint8 *XOffset, uint8 *YOffset, uint16 *sTone)
 {
 	
@@ -34,7 +29,7 @@ internal void GameUserInput(ButtonActions *actionButt, uint8 *XOffset, uint8 *YO
 		(*XOffset)--;
 
 	}
-	*/
+	
 	static uint16 baseValue = 512;
 	if (actionButt->ButB)
 	{
@@ -52,16 +47,17 @@ internal void GameUserInput(ButtonActions *actionButt, uint8 *XOffset, uint8 *YO
 	if (actionButt->ButA)
 		baseValue = 880;
 
-	*XOffset -= actionButt->StickX / 4096;
-	*YOffset += actionButt->StickY / 4096;
+	*XOffset -= (uint8)(actionButt->StickX / 4096);
+	*YOffset += (uint8)(actionButt->StickY / 4096);
 
-	*sTone = baseValue + (int)(256.0f*((real32)actionButt->StickY / 30000.0f));
+	*sTone = baseValue + (uint16)(256.0f*((real32)actionButt->StickY / 30000.0f));
 
 	if (*sTone >= 20000)
 		*sTone = 1000;
 
 }
-internal void GameOutputSound(game_sound_output_buffer *SoundBuffer, uint16 toneHz)
+*/
+internal void GameOutputSound(game_sound_output_buffer *SoundBuffer, int toneHz)
 {
 	local_persist real32 tSine;
 		int16 toneVolume = 3000;
@@ -69,9 +65,9 @@ internal void GameOutputSound(game_sound_output_buffer *SoundBuffer, uint16 tone
 		{
 			toneHz = 440;
 		}
-		int16 wavePeriod = SoundBuffer->samplesPerSecond/toneHz;
-		int16 *sampleOut = SoundBuffer->samples;
-		for (DWORD sampleIndex = 0; sampleIndex < SoundBuffer->sampleCount; ++sampleIndex)
+		int16 wavePeriod = (int16)(SoundBuffer->samplesPerSecond/toneHz);
+		int16 *sampleOut = (int16*)SoundBuffer->samples;
+		for (DWORD sampleIndex = 0; sampleIndex < (DWORD)SoundBuffer->sampleCount; ++sampleIndex)
 		{
 			real32 sineValue = sin(tSine);
 			int16 sampleValue = (int16)(sineValue * toneVolume);
@@ -92,17 +88,18 @@ RenderWierdGradient(game_Off_Screen_Buffer *Buffer, int XOffset, int YOffset)
 		uint32 *Pixel = (uint32 *) Row;
 		for(int X = 0; X < Buffer->Width; ++X)
 		{
-			uint8 Blue ;
-			uint8 Green ;
+			uint8 Blue = 0;
+			uint8 Green = 0 ;
 			uint8 Red = 0;
 			
 			if (X > Buffer->Width/2){
 				Blue = 0;
-				Red = (X + XOffset);
+				Red = (uint8)(X + XOffset);
+				Green = (uint8)(Y + YOffset);
 			}else
 			{
-				Blue = (X + XOffset);
-				Green = (Y + YOffset);
+				Blue = (uint8)(X + XOffset);
+				Green = (uint8)(Y + YOffset);
 				Red = 0;
 			}
 			*Pixel++ = ((Red<<16)|(Green<<8)|Blue);
@@ -138,9 +135,9 @@ internal void GameUpdateAndRander(game_memory *Memory, game_input *Input, game_O
     if(Input0->IsAnalog)
     {
         // NOTE(casey): Use analog movement tuning
-        GameState->BlueOffset -= (int)4.0f*(Input0->EndX);
-		GameState->GreenOffset += (int)4.0f*(Input0->EndY);
-        GameState->ToneHz = 256 + (uint16)(128.0f*(Input0->EndY));
+        GameState->BlueOffset -= (int)(4.0f*(Input0->EndX));
+		GameState->GreenOffset += (int)(4.0f*(Input0->EndY));
+        GameState->ToneHz = 256 + (int)(128.0f*(Input0->EndY));
     }
     else
     {
