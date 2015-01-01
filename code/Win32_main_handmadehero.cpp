@@ -85,6 +85,13 @@ float platformImpl(char *value)
 	return 2;
 }
 
+internal void
+Win32ProcessKeyboardMessage(game_button_state *NewState, bool32 IsDown)
+{
+    NewState->EndedDown = IsDown;
+    ++NewState->HalfTransitionCount;
+}
+
 internal debug_read_file_result 
 DEBUGPlatformReadEntireFile(char *Filename)
 {
@@ -199,6 +206,89 @@ Win32ProcessXInputDigitalButton(DWORD XInputButtonState,
 }
 */
 
+internal void
+Win32ProcessPendingMessages(game_controller_input *KeyboardController)
+{
+    MSG Message;
+    while(PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
+    {
+        switch(Message.message)
+        {
+            case WM_QUIT:
+            {
+                GlobalRunning = false;
+            } break;
+            
+            case WM_SYSKEYDOWN:
+            case WM_SYSKEYUP:
+            case WM_KEYDOWN:
+            case WM_KEYUP:
+            {
+                uint32 VKCode = (uint32)Message.wParam;
+                bool32 WasDown = ((Message.lParam & (1 << 30)) != 0);
+                bool32 IsDown = ((Message.lParam & (1 << 31)) == 0);
+                if(WasDown != IsDown)
+                {
+                    if(VKCode == 'W')
+                    {
+                    }
+                    else if(VKCode == 'A')
+                    {
+                    }
+                    else if(VKCode == 'S')
+                    {
+                    }
+                    else if(VKCode == 'D')
+                    {
+                    }
+                    else if(VKCode == 'Q')
+                    {
+                        Win32ProcessKeyboardMessage(&KeyboardController->LeftShoulder, IsDown);
+                    }
+                    else if(VKCode == 'E')
+                    {
+                        Win32ProcessKeyboardMessage(&KeyboardController->RightShoulder, IsDown);
+                    }
+                    else if(VKCode == VK_UP)
+                    {
+                        Win32ProcessKeyboardMessage(&KeyboardController->Up, IsDown);
+                    }
+                    else if(VKCode == VK_LEFT)
+                    {
+                        Win32ProcessKeyboardMessage(&KeyboardController->Left, IsDown);
+                    }
+                    else if(VKCode == VK_DOWN)
+                    {
+                        Win32ProcessKeyboardMessage(&KeyboardController->Down, IsDown);
+                    }
+                    else if(VKCode == VK_RIGHT)
+                    {
+                        Win32ProcessKeyboardMessage(&KeyboardController->Right, IsDown);
+                    }
+                    else if(VKCode == VK_ESCAPE)
+                    {
+                        GlobalRunning = false;
+                    }
+                    else if(VKCode == VK_SPACE)
+                    {
+                    }
+                }
+
+                bool32 AltKeyWasDown = (Message.lParam & (1 << 29));
+                if((VKCode == VK_F4) && AltKeyWasDown)
+                {
+                    GlobalRunning = false;
+                }
+            } break;
+
+            default:
+            {
+                TranslateMessage(&Message);
+                DispatchMessageA(&Message);
+            } break;
+        }
+    }
+}
 
 internal void
 Win32ClearSoundBuffer(Win32_output_sound *soundOutput)
@@ -480,16 +570,12 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 
 					
 					begCounter.QuadPart;
-					MSG Message;
-					while(PeekMessage( &Message,  0,0,0, PM_REMOVE)) 
-					{
-						if(Message.message == WM_QUIT)
-						{
-							GlobalRunning = false;
-						}
-						TranslateMessage(&Message);
-						DispatchMessage(&Message);				
-					}
+                    game_controller_input *KeyboardController = &NewInput->Controllers[0];
+                    game_controller_input ZeroController = {};
+                    *KeyboardController = ZeroController;                    
+
+                    Win32ProcessPendingMessages(KeyboardController);            
+
 					//XINPUT_VIBRATION Vibration;
 					//ButtonActions actionButt;				
 					
