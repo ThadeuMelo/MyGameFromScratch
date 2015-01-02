@@ -77,7 +77,8 @@ struct game_button_state
 
 struct game_controller_input
 {
-    bool32 IsAnalog;
+    bool32 IsConnected;
+    bool32 IsAnalog;   
     
     real32 StartX;
     real32 StartY;
@@ -164,6 +165,15 @@ struct debug_read_file_result
     uint32 ContentsSize;
     void *Contents;
 };
+
+inline game_controller_input *GetController(game_input *Input, int unsigned ControllerIndex)
+{
+    Assert(ControllerIndex < ArrayCount(Input->Controllers));
+    
+    game_controller_input *Result = &Input->Controllers[ControllerIndex];
+    return(Result);
+}
+
 internal debug_read_file_result DEBUGPlatformReadEntireFile(char *Filename);
 internal void DEBUGPlatformFreeFileMemory(void *Memory);
 internal bool32 DEBUGPlatformWriteEntireFile(char *Filename, uint32 MemorySize, void *Memory);

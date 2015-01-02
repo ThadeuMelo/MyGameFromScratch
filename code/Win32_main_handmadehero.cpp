@@ -570,11 +570,19 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 
 					
 					begCounter.QuadPart;
-                    game_controller_input *KeyboardController = &NewInput->Controllers[0];
-                    game_controller_input ZeroController = {};
-                    *KeyboardController = ZeroController;                    
+                    game_controller_input *OldKeyboardController = GetController(OldInput, 0);
+                    game_controller_input *NewKeyboardController = GetController(NewInput, 0);
+                    *NewKeyboardController = {};
+                    NewKeyboardController->IsConnected = true;
+                    for(int ButtonIndex = 0;
+                        ButtonIndex < ArrayCount(NewKeyboardController->Buttons);
+                        ++ButtonIndex)
+                    {
+                        NewKeyboardController->Buttons[ButtonIndex].EndedDown =
+                            OldKeyboardController->Buttons[ButtonIndex].EndedDown;
+                    }                  
 
-                    Win32ProcessPendingMessages(KeyboardController);            
+                    Win32ProcessPendingMessages(NewKeyboardController);            
 
 					//XINPUT_VIBRATION Vibration;
 					//ButtonActions actionButt;				
@@ -587,8 +595,9 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 					
 					for (DWORD ControllerIndex = 0; ControllerIndex< XUSER_MAX_COUNT; ControllerIndex++ )
 					{
-						game_controller_input *OldController = &OldInput->Controllers[ControllerIndex];
-						game_controller_input *NewController = &NewInput->Controllers[ControllerIndex];
+                        DWORD OurControllerIndex = ControllerIndex + 1;
+                        game_controller_input *OldController = GetController(OldInput, OurControllerIndex);
+                        game_controller_input *NewController = GetController(NewInput, OurControllerIndex);
 						
 						XINPUT_STATE ControllerState;
 						if(XInputGetState(ControllerIndex, &ControllerState) == ERROR_SUCCESS)
