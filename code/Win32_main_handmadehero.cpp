@@ -85,6 +85,23 @@ float platformImpl(char *value)
 	return 2;
 }
 
+internal real32
+Win32ProcessXInputStickValue(SHORT Value, SHORT DeadZoneThreshold)
+{
+    real32 Result = 0;
+
+    if(Value < -DeadZoneThreshold)
+    {
+        Result = (real32)((Value + DeadZoneThreshold) / (32768.0f - DeadZoneThreshold));
+    }
+    else if(Value > DeadZoneThreshold)
+    {
+        Result = (real32)((Value - DeadZoneThreshold) / (32767.0f - DeadZoneThreshold));
+    }
+
+    return(Result);
+}
+
 internal void
 Win32ProcessKeyboardMessage(game_button_state *NewState, bool32 IsDown)
 {
