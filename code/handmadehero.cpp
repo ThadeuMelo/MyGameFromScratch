@@ -1,62 +1,6 @@
 
 #include "handmadehero.h"
 
-/*
-Controler/keyboard input
-sound output
-bitmap output
-*/
-
-/*
-internal void GameUserInput(ButtonActions *actionButt, uint8 *XOffset, uint8 *YOffset, uint16 *sTone)
-{
-	
-	/*if (actionButt->Up)
-	{
-		(*YOffset)++;
-	}
-	if (actionButt->Down)
-	{
-		(*YOffset)--;
-	}
-	if (actionButt->Left)
-	{
-		(*XOffset)++;
-	}
-	if (actionButt->Right)
-	{
-
-		(*XOffset)--;
-
-	}
-	
-	static uint16 baseValue = 512;
-	if (actionButt->ButB)
-	{
-		baseValue = 262;
-	}
-	if (actionButt->ButY)
-	{
-		baseValue = 880;
-	}
-	if (actionButt->ButX)
-	{
-		baseValue = 350;
-	}
-	
-	if (actionButt->ButA)
-		baseValue = 880;
-
-	*XOffset -= (uint8)(actionButt->StickX / 4096);
-	*YOffset += (uint8)(actionButt->StickY / 4096);
-
-	*sTone = baseValue + (uint16)(256.0f*((real32)actionButt->StickY / 30000.0f));
-
-	if (*sTone >= 20000)
-		*sTone = 1000;
-
-}
-*/
 internal void GameOutputSound(game_sound_output_buffer *SoundBuffer, int toneHz)
 {
 	local_persist real32 tSine;

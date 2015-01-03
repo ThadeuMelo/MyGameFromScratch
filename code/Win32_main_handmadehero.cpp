@@ -1,43 +1,48 @@
 //This is my first game from scratch!!
 
+#include <math.h>
+#include <stdint.h>
 
+#define internal static 
+#define local_persist static 
+#define global_variable static
+
+#define PIXEL_BIT_COUNT 32
+#define BYTES_PER_PIXEL 4
+#define Pi32 3.14159265359f
+
+typedef int8_t int8;
+typedef int16_t int16;
+typedef int32_t int32;
+typedef int64_t int64;
+typedef int32 bool32;
+
+typedef uint8_t uint8;
+typedef uint16_t uint16;
+typedef uint32_t uint32;
+typedef uint64_t uint64;
+
+typedef float real32;
+typedef double real64;
+
+#include <windows.h>
+
+#include "handmadehero.h"
 #include "handmadehero.cpp"
 
-global_variable bool32 GlobalRunning;
 
-struct Win32_Off_Screen_Buffer
-{
-	 BITMAPINFO Info;
-	 void *Memory;
-	 int Width;
-	 int Height;
-	 int Pitch;
-};
+#include <stdint.h>
+#include <xinput.h>
+#include <dsound.h>
 
 
-struct Win32_Window_Dimension
-{
-	int Width;
-	int Height;
-};
-
-
-struct Win32_output_sound
-{
-	int samplesPersecond = 48000;
-	int waveCounter = 0;
-	int sTone = 120;
-	int wavePeriod = samplesPersecond / sTone;
-	int bytesPersample = sizeof(int16) * 2;
-	int SecondaryBufferSize = samplesPersecond*bytesPersample;
-	uint32 runningSampleIndex = 0;
-	real32 tSine;
-	int latancySampleCount = samplesPersecond / 60;
-
-};
+#include "win32_handmade.h"
 
 global_variable Win32_Off_Screen_Buffer GlobalBackBuffer;
 global_variable LPDIRECTSOUNDBUFFER SecondaryBuffer;
+global_variable bool32 GlobalRunning;
+global_variable int64 GlobalPerfCountFrequency;
+
 
 #define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex,  XINPUT_STATE* pState)
 typedef X_INPUT_GET_STATE(x_input_get_state);
@@ -60,24 +65,6 @@ global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
 #define DIRECT_SOUND_CREATE(name)_Check_return_ HRESULT WINAPI name(_In_opt_ LPCGUID pcGuidDevice, _Outptr_ LPDIRECTSOUND *ppDS, _Pre_null_ LPUNKNOWN pUnkOuter)
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
-LRESULT CALLBACK Win32MainWindowCallBack(
-	HWND	Window,
-	UINT	Message,
-	WPARAM	WParam,
-	LPARAM	LParam
-	);
-	
-LRESULT Win32CreateInitialWindow(HINSTANCE Instance);
-
-internal void Win32ResizeDIBSection(Win32_Off_Screen_Buffer *Buffer, int, int);
-
-internal void Win32UpdateWindow(Win32_Off_Screen_Buffer *Buffer, HDC DeviceContext,
-									int WindowWidth, int WindowHeight);
-
-internal Win32_Window_Dimension Win32GetWindowDimension(HWND Window);
-
-internal void Wind32LoadXInput(void);
-
 
 float platformImpl(char *value)
 {
@@ -99,6 +86,14 @@ Win32ProcessXInputStickValue(SHORT Value, SHORT DeadZoneThreshold)
         Result = (real32)((Value - DeadZoneThreshold) / (32767.0f - DeadZoneThreshold));
     }
 
+    return(Result);
+}
+
+inline LARGE_INTEGER
+Win32GetWallClock(void)
+{    
+    LARGE_INTEGER Result;
+    QueryPerformanceCounter(&Result);
     return(Result);
 }
 
@@ -205,6 +200,13 @@ Win32ProcessXInputDigitalButton(DWORD XInputButtonState,
     NewState->HalfTransitionCount = (OldState->EndedDown != NewState->EndedDown) ? 1 : 0;
 }
 
+inline real32
+Win32GetSecondsElapsed(LARGE_INTEGER Start, LARGE_INTEGER End)
+{
+    real32 Result = ((real32)(End.QuadPart - Start.QuadPart) /
+                     (real32)GlobalPerfCountFrequency);
+    return(Result);
+}
 
 /*internal ButtonActions WIN32_getButtonAction(DWORD wButtons)
 {
@@ -371,7 +373,7 @@ Win32FillSoundBuffer(Win32_output_sound *soundOutput, game_sound_output_buffer *
 
 }
 internal void 
-Wind32LoadXInput(void)
+Win32LoadXInput(void)
 {
 	HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll");
 	if(!XInputLibrary)
@@ -506,11 +508,82 @@ Win32ResizeDIBSection(Win32_Off_Screen_Buffer *Buffer, int Width, int Height)
 	
 }
 
+LRESULT CALLBACK Win32MainWindowCallBack(
+	HWND	Window,
+	UINT	Message,
+	WPARAM	WParam,
+	LPARAM	LParam
+	)
+{
+    LARGE_INTEGER PerfCountFrequencyResult;
+    QueryPerformanceFrequency(&PerfCountFrequencyResult);
+    GlobalPerfCountFrequency = PerfCountFrequencyResult.QuadPart;
+
+    // NOTE(casey): Set the Windows scheduler granularity to 1ms
+    // so that our Sleep() can be more granular.
+    UINT DesiredSchedulerMS = 1;
+    bool32 SleepIsGranular = (timeBeginPeriod(DesiredSchedulerMS) == TIMERR_NOERROR);
+	
+	Win32LoadXInput();
+	LRESULT Result = 0;
+	Win32_Window_Dimension Dimension = Win32GetWindowDimension(Window);
+	Win32ResizeDIBSection(&GlobalBackBuffer, 1200, 720);
+	
+	switch(Message)
+	{
+		case WM_PAINT:
+		{
+			PAINTSTRUCT Paint;
+			HDC DeviceContext = BeginPaint(Window, &Paint);
+			int X = Paint.rcPaint.left;
+			int Y = Paint.rcPaint.top;
+			int Height = Paint.rcPaint.bottom - Paint.rcPaint.top;
+			int Width = Paint.rcPaint.right - Paint.rcPaint.left;
+			
+			Win32_Window_Dimension Dimension = Win32GetWindowDimension(Window);
+			//RenderWierdGradient(&GlobalBackBuffer, Width, Height);
+			
+			Win32UpdateWindow(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
+			EndPaint(Window, &Paint);
+		} break;
+		case WM_SIZE:
+		{
+			OutputDebugStringA("WM_SIZE\n");
+		} break;
+		case WM_DESTROY:
+		{
+			//TODO: This is a ERRO situation, deal with it!!
+			GlobalRunning = false;
+			OutputDebugStringA("WM_DESTROY\n");
+		} break;
+		case WM_CLOSE:
+		{
+			GlobalRunning = false;
+			OutputDebugStringA("WM_CLOSE\n");
+		} break;
+		case WM_ACTIVATEAPP:
+		{
+			OutputDebugStringA("WM_ACTIVATEAPP\n");
+		} break;
+		default:
+		{
+			Result =  DefWindowProc(Window, Message,WParam,LParam);
+		} break;
+
+	}
+
+	return Result;
+
+}
 
 
 LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 	WNDCLASSA WindowClass = {};
-	//TODO(casey) : Check if
+	
+	 // NOTE(casey): Set the Windows scheduler granularity to 1ms
+    // so that our Sleep() can be more granular.
+    UINT DesiredSchedulerMS = 1;
+    bool32 SleepIsGranular = (timeBeginPeriod(DesiredSchedulerMS) == TIMERR_NOERROR);
 
 	WindowClass.style = CS_OWNDC|CS_HREDRAW|CS_VREDRAW;
 	WindowClass.lpfnWndProc = Win32MainWindowCallBack;
@@ -521,6 +594,11 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 	QueryPerformanceFrequency(&performanceFrequencyResult);
 
 	int64 perfFreqCount = performanceFrequencyResult.QuadPart;
+	
+	// TODO(casey): How do we reliably query on this on Windows?
+    int MonitorRefreshHz = 60;
+    int GameUpdateHz = MonitorRefreshHz / 2;
+    real32 TargetSecondsPerFrame = 1.0f / (real32)GameUpdateHz;
 
 	if (RegisterClassA(&WindowClass))
 	{
@@ -581,6 +659,8 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				game_input Input[2] = {};
 				game_input *NewInput = &Input[0];
 				game_input *OldInput = &Input[1];
+				
+				LARGE_INTEGER LastCounter = Win32GetWallClock();
 
 				LARGE_INTEGER begCounter; // Starting the clock
 				QueryPerformanceCounter(&begCounter);
@@ -714,9 +794,11 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 						else
 						{
 						// Controller is not connected 
-						         // NOTE(casey): The controller is not available
-                        				 NewController->IsConnected = false;
-                        				 OutputDebugStringA("Controle não conectado");
+						// NOTE(casey): The controller is not available
+						char strBuffer[264];
+					     wsprintfA(strBuffer, "Controle %d nao conectado\n", ControllerIndex);
+							NewController->IsConnected = false;
+							OutputDebugStringA(strBuffer);
 						}
 					}
 
@@ -771,6 +853,40 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 					
 						isSoundPlaying = true;
 					}
+					
+					LARGE_INTEGER WorkCounter = Win32GetWallClock();
+                    real32 WorkSecondsElapsed = Win32GetSecondsElapsed(LastCounter, WorkCounter);
+
+                    // TODO(casey): NOT TESTED YET!  PROBABLY BUGGY!!!!!
+                    real32 SecondsElapsedForFrame = WorkSecondsElapsed;
+                    if(SecondsElapsedForFrame < TargetSecondsPerFrame)
+                    {                        
+                        if(SleepIsGranular)
+                        {
+                            DWORD SleepMS = (DWORD)(1000.0f * (TargetSecondsPerFrame -
+                                                               SecondsElapsedForFrame));
+                            if(SleepMS > 0)
+                            {
+                                Sleep(SleepMS);
+                            }
+                        }
+                        
+                        real32 TestSecondsElapsedForFrame = Win32GetSecondsElapsed(LastCounter,
+                                                                                   Win32GetWallClock());
+                        Assert(TestSecondsElapsedForFrame < TargetSecondsPerFrame);
+                        
+                        while(SecondsElapsedForFrame < TargetSecondsPerFrame)
+                        {                            
+                            SecondsElapsedForFrame = Win32GetSecondsElapsed(LastCounter,
+                                                                            Win32GetWallClock());
+                        }
+                    }
+                    else
+                    {
+                        // TODO(casey): MISSED FRAME RATE!
+                        // TODO(casey): Logging
+                    }
+					
 					Win32_Window_Dimension Dimensiton = Win32GetWindowDimension(Window);
 					Win32UpdateWindow(&GlobalBackBuffer, DeviceContext, Dimensiton.Width, Dimensiton.Height);
 
@@ -815,64 +931,6 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 	return 0;
 }	
 
-LRESULT CALLBACK Win32MainWindowCallBack(
-	HWND	Window,
-	UINT	Message,
-	WPARAM	WParam,
-	LPARAM	LParam
-	)
-{
-	Wind32LoadXInput();
-	LRESULT Result = 0;
-	Win32_Window_Dimension Dimension = Win32GetWindowDimension(Window);
-	Win32ResizeDIBSection(&GlobalBackBuffer, 1200, 720);
-	
-	switch(Message)
-	{
-		case WM_PAINT:
-		{
-			PAINTSTRUCT Paint;
-			HDC DeviceContext = BeginPaint(Window, &Paint);
-			int X = Paint.rcPaint.left;
-			int Y = Paint.rcPaint.top;
-			int Height = Paint.rcPaint.bottom - Paint.rcPaint.top;
-			int Width = Paint.rcPaint.right - Paint.rcPaint.left;
-			
-			Win32_Window_Dimension Dimension = Win32GetWindowDimension(Window);
-			//RenderWierdGradient(&GlobalBackBuffer, Width, Height);
-			
-			Win32UpdateWindow(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
-			EndPaint(Window, &Paint);
-		} break;
-		case WM_SIZE:
-		{
-			OutputDebugStringA("WM_SIZE\n");
-		} break;
-		case WM_DESTROY:
-		{
-			//TODO: This is a ERRO situation, deal with it!!
-			GlobalRunning = false;
-			OutputDebugStringA("WM_DESTROY\n");
-		} break;
-		case WM_CLOSE:
-		{
-			GlobalRunning = false;
-			OutputDebugStringA("WM_CLOSE\n");
-		} break;
-		case WM_ACTIVATEAPP:
-		{
-			OutputDebugStringA("WM_ACTIVATEAPP\n");
-		} break;
-		default:
-		{
-			Result =  DefWindowProc(Window, Message,WParam,LParam);
-		} break;
-
-	}
-
-	return Result;
-
-}
 
 int CALLBACK WinMain(
 	HINSTANCE Instance,

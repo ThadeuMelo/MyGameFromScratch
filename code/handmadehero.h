@@ -1,32 +1,5 @@
 #if !defined(HANDMADEHERO_H)
-#include <windows.h>
-#include <stdint.h>
-#include <xinput.h>
-#include <dsound.h>
-#include <math.h>
 
-#define local_persist static
-#define global_variable static
-#define internal static
-
-#define PIXEL_BIT_COUNT 32
-#define BYTES_PER_PIXEL 4
-#define Pi32 3.14159265359f
-
-typedef uint8_t uint8;
-typedef uint16_t uint16;
-typedef uint32_t uint32;
-typedef uint64_t uint64;
-
-typedef int8_t int8;
-typedef int16_t int16;
-typedef int32_t int32;
-typedef int64_t int64;
-
-typedef int32 bool32;
-
-typedef float real32;
-typedef double real64;
 
 #if HANDMADE_SLOW
 // TODO(casey): Complete assertion macro - don't worry everyone!
@@ -151,9 +124,9 @@ struct game_state
     int BlueOffset;
 };
 
+internal void GameUpdateAndRender(game_memory *Memory, game_input *Input, game_Off_Screen_Buffer *Buffer,
+                                  game_sound_output_buffer *SoundBuffer);
 
-internal void  RenderWierdGradient(game_Off_Screen_Buffer *Buffer, int XOffset, int YOffset);
-internal void GameUpdateAndRander(game_Off_Screen_Buffer *Buffer);
 /*
   NOTE(casey): Services that the platform layer provides to the game
 */
