@@ -6,6 +6,7 @@ struct Win32_Off_Screen_Buffer
 	 int Width;
 	 int Height;
 	 int Pitch;
+	 int BytesPerPixel = 4;
 };
 
 
@@ -18,17 +19,24 @@ struct Win32_Window_Dimension
 
 struct Win32_output_sound
 {
-	int samplesPersecond = 48000;
+	int samplesPerSecond = 48000;
 	int waveCounter = 0;
 	int sTone = 120;
-	int wavePeriod = samplesPersecond / sTone;
-	int bytesPersample = sizeof(int16) * 2;
-	int SecondaryBufferSize = samplesPersecond*bytesPersample;
+	int wavePeriod = samplesPerSecond / sTone;
+	int bytesPerSample = sizeof(int16) * 2;
+	DWORD secondaryBufferSize = samplesPerSecond*bytesPerSample;
 	uint32 runningSampleIndex = 0;
 	real32 tSine;
-	int latancySampleCount = samplesPersecond / 60;
+	int latencySampleCount = samplesPerSecond / 60;
 
 };
+
+struct win32_debug_time_marker
+{
+    DWORD PlayCursor;
+    DWORD WriteCursor;
+};
+
 
 #define WIN32_HANDMADE_H
 #endif
