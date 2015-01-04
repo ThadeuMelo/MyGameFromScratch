@@ -31,7 +31,9 @@ typedef double real64;
 #include "handmadehero.cpp"
 
 
-#include <stdint.h>
+#include <windows.h>
+#include <stdio.h>
+#include <malloc.h>
 #include <xinput.h>
 #include <dsound.h>
 
@@ -873,7 +875,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
                         
                         real32 TestSecondsElapsedForFrame = Win32GetSecondsElapsed(LastCounter,
                                                                                    Win32GetWallClock());
-                        Assert(TestSecondsElapsedForFrame < TargetSecondsPerFrame);
+                        Assert((int)(1000*TestSecondsElapsedForFrame) <= (int)(1000*TargetSecondsPerFrame));
                         
                         while(SecondsElapsedForFrame < TargetSecondsPerFrame)
                         {                            
@@ -890,25 +892,27 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 					Win32_Window_Dimension Dimensiton = Win32GetWindowDimension(Window);
 					Win32UpdateWindow(&GlobalBackBuffer, DeviceContext, Dimensiton.Width, Dimensiton.Height);
 
-					int64 endCycleCount =  __rdtsc();
-					int64 elapsedCycleCount =  endCycleCount - LastCycleCount;
-					
-					LARGE_INTEGER endCounter;
-					QueryPerformanceCounter(&endCounter);
-					
-					int64 elapsedCounter = endCounter.QuadPart - begCounter.QuadPart; // how much time has passed in the running cycle
-					int64 milSecPerFrem = (1000*elapsedCounter )/ perfFreqCount;
-					int32 MCPF = (int32)(elapsedCycleCount/(1000*1000)); //Mega cycles per frame
-					int32 FPS = (int32)(perfFreqCount/elapsedCounter);
-					char strBuffer[264];
-					wsprintfA(strBuffer, "Milisecond/Frame = %d\n _ FPS = %d _ MC/F = %d\n", milSecPerFrem, FPS, MCPF );
-					OutputDebugStringA(strBuffer);
-					begCounter = endCounter;
-					LastCycleCount = endCycleCount;
+			
 					
 					game_input *Temp = NewInput;
 					NewInput = OldInput;
 					OldInput = Temp;
+					
+					LARGE_INTEGER EndCounter = Win32GetWallClock();
+                    real32 MSPerFrame = 1000.0f*Win32GetSecondsElapsed(LastCounter, EndCounter);                    
+                    LastCounter = EndCounter;
+
+                    uint64 EndCycleCount = __rdtsc();
+                    uint64 CyclesElapsed = EndCycleCount - LastCycleCount;
+                    LastCycleCount = EndCycleCount;
+					
+					real64 FPS = 0.0f;
+                    real64 MCPF = ((real64)CyclesElapsed / (1000.0f * 1000.0f));
+
+                    char FPSBuffer[256];
+                    _snprintf_s(FPSBuffer, sizeof(FPSBuffer),
+                                "%.02fms/f,  %.02ff/s,  %.02fmc/f\n", MSPerFrame, FPS, MCPF);
+                    OutputDebugStringA(FPSBuffer);
 				}
 
 			}
