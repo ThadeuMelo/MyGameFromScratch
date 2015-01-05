@@ -1,6 +1,11 @@
 
 #include "handmadehero.h"
 
+
+typedef unsigned long DWORD;
+
+
+
 internal void GameOutputSound(game_sound_output_buffer *SoundBuffer, int toneHz)
 {
 	local_persist real32 tSine;
@@ -20,6 +25,14 @@ internal void GameOutputSound(game_sound_output_buffer *SoundBuffer, int toneHz)
 			tSine += 2.0f*Pi32*1.0f / (real32)wavePeriod;
 		}
 }
+
+internal void
+GameGetSoundSamples(game_memory *Memory, game_sound_output_buffer *SoundBuffer)
+{
+	game_state *GameState = (game_state *)Memory->PermanentStorage;
+	GameOutputSound(SoundBuffer, GameState->ToneHz);
+}
+
 
 internal void 
 RenderWierdGradient(game_Off_Screen_Buffer *Buffer, int XOffset, int YOffset)
