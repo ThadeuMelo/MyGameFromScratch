@@ -65,8 +65,7 @@ RenderWierdGradient(game_Off_Screen_Buffer *Buffer, int XOffset, int YOffset)
 	}
 }
 
-internal void GameUpdateAndRander(game_memory *Memory, game_input *Input, game_Off_Screen_Buffer *Buffer, 
-									game_sound_output_buffer *SoundBuffer)
+internal void GameUpdateAndRender(game_memory *Memory, game_input *Input, game_Off_Screen_Buffer *Buffer)
 {
 
     Assert((&Input->Controllers[0].Terminator - &Input->Controllers[0].Buttons[0]) ==
@@ -136,6 +135,6 @@ internal void GameUpdateAndRander(game_memory *Memory, game_input *Input, game_O
 			GameState->GreenOffset =  GameState->BlueOffset;
 		}
 	}
-	GameOutputSound(SoundBuffer, GameState->ToneHz);
+
 	RenderWierdGradient(Buffer, GameState->BlueOffset, GameState->GreenOffset);
 }

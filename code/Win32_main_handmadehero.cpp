@@ -568,7 +568,6 @@ Win32DrawSoundBufferMarker(Win32_Off_Screen_Buffer *Backbuffer,
                            real32 C, int PadX, int Top, int Bottom,
                            DWORD Value, uint32 Color)
 {
-    Assert(Value < (DWORD)soundOutput->secondaryBufferSize);
     real32 XReal32 = (C * (real32)Value);
     int X = PadX + (int)XReal32;
     Win32DebugDrawVertical(Backbuffer, X, Top, Bottom, Color);
@@ -700,7 +699,6 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 			Win32ClearSoundBuffer(&soundOutput);
 			
 			GlobalRunning = true;
-			bool32 SoundIsValid = false;
 			
 			int16 *Samples = (int16 *)VirtualAlloc(0, soundOutput.secondaryBufferSize,
                                                    MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
@@ -880,46 +878,13 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 						}
 					}
 
-					                    // NOTE(casey): Compute how much sound to write and where
-                    DWORD ByteToLock = 0;
-                    DWORD TargetCursor = 0;
-                    DWORD BytesToWrite = 0;
-                    if(SoundIsValid)
-                    {
-                        ByteToLock = ((soundOutput.runningSampleIndex*soundOutput.bytesPerSample) %
-                                      soundOutput.secondaryBufferSize);
-
-                        TargetCursor =
-                            ((LastPlayCursor +
-                              (soundOutput.latencySampleCount*soundOutput.bytesPerSample)) %
-                             soundOutput.secondaryBufferSize);
-                        if(ByteToLock > TargetCursor)
-                        {
-                            BytesToWrite = (soundOutput.secondaryBufferSize - ByteToLock);
-                            BytesToWrite += TargetCursor;
-                        }
-                        else
-                        {
-                            BytesToWrite = TargetCursor - ByteToLock;
-                        }
-                    }
-					
-
-					game_sound_output_buffer SoundBuffer ={};
-
-					SoundBuffer.samplesPerSecond = soundOutput.samplesPerSecond ;
-					SoundBuffer.sampleCount = BytesToWrite/soundOutput.bytesPerSample;
-					SoundBuffer.samples = Samples;
-
-					game_Off_Screen_Buffer GameBuffer = {};
-					
-					GameBuffer.Memory = GlobalBackBuffer.Memory;
-					GameBuffer.Width = GlobalBackBuffer.Width;
-					GameBuffer.Height = GlobalBackBuffer.Height;
-					GameBuffer.Pitch = GlobalBackBuffer.Pitch;
-					
-					GameUpdateAndRander(&GameMemory, NewInput, &GameBuffer, &SoundBuffer);
-                    		
+                        game_Off_Screen_Buffer Buffer = {};
+                        Buffer.Memory = GlobalBackBuffer.Memory;
+                        Buffer.Width = GlobalBackBuffer.Width; 
+                        Buffer.Height = GlobalBackBuffer.Height;
+                        Buffer.Pitch = GlobalBackBuffer.Pitch; 
+                        GameUpdateAndRender(&GameMemory, NewInput, &Buffer);
+						
                         LARGE_INTEGER AudioWallClock = Win32GetWallClock();
                         real32 FromBeginToAudioSeconds = Win32GetSecondsElapsed(FlipWallClock, AudioWallClock);
 
