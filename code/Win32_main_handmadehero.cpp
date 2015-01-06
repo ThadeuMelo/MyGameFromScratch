@@ -456,7 +456,8 @@ Win32UpdateWindow( Win32_Off_Screen_Buffer *Buffer, HDC DeviceContext,
 internal void 
 Win32ResizeDIBSection(Win32_Off_Screen_Buffer *Buffer, int Width, int Height)
 {
-
+    int BytesPerPixel = 4;
+	Buffer->BytesPerPixel = BytesPerPixel;
 	if(Buffer->Memory)
 	{
 		VirtualFree(Buffer->Memory, NULL, MEM_RELEASE);
@@ -471,10 +472,10 @@ Win32ResizeDIBSection(Win32_Off_Screen_Buffer *Buffer, int Width, int Height)
 	Buffer->Info.bmiHeader.biBitCount = PIXEL_BIT_COUNT; //24 RGB and 8 for pading 
 	Buffer->Info.bmiHeader.biCompression = BI_RGB;
 
-	int BitMapMemSize = (Height*Width)*(BYTES_PER_PIXEL);
+    int BitmapMemorySize = (Buffer->Width*Buffer->Height)*BytesPerPixel;
 	
-	Buffer->Memory = VirtualAlloc(NULL, BitMapMemSize, MEM_COMMIT, PAGE_READWRITE);
-	
+	Buffer->Memory = VirtualAlloc(NULL, BitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
+	Buffer->Pitch = Width*BytesPerPixel;
 	
 }
 
@@ -511,7 +512,7 @@ LRESULT CALLBACK Win32MainWindowCallBack(
 			int Width = Paint.rcPaint.right - Paint.rcPaint.left;
 			
 			Win32_Window_Dimension Dimension = Win32GetWindowDimension(Window);
-			//RenderWierdGradient(&GlobalBackBuffer, Width, Height);
+			//RenderWeirdGradient(&GlobalBackBuffer, Width, Height);
 			
 			Win32UpdateWindow(&GlobalBackBuffer, DeviceContext, Dimension.Width, Dimension.Height);
 			EndPaint(Window, &Paint);
@@ -547,18 +548,31 @@ LRESULT CALLBACK Win32MainWindowCallBack(
 }
 
 internal void
-Win32DebugDrawVertical(Win32_Off_Screen_Buffer *GlobalBackBuffer,
+Win32DebugDrawVertical(Win32_Off_Screen_Buffer *Backbuffer,
                        int X, int Top, int Bottom, uint32 Color)
 {
-    uint8 *Pixel = ((uint8 *)GlobalBackBuffer->Memory +
-                    X*GlobalBackBuffer->BytesPerPixel +
-                    Top*GlobalBackBuffer->Pitch);
-    for(int Y = Top;
-        Y < Bottom;
-        ++Y)
+    if(Top <= 0)
     {
-        *(uint32 *)Pixel = Color;
-        Pixel += GlobalBackBuffer->Pitch;
+        Top = 0;
+    }
+
+    if(Bottom > Backbuffer->Height)
+    {
+        Bottom = Backbuffer->Height;
+    }
+    
+    if((X >= 0) && (X < Backbuffer->Width))
+    {
+        uint8 *Pixel = ((uint8 *)Backbuffer->Memory +
+                        X*Backbuffer->BytesPerPixel +
+                        Top*Backbuffer->Pitch);
+        for(int Y = Top;
+            Y < Bottom;
+            ++Y)
+        {
+            *(uint32 *)Pixel = Color;
+			Pixel += Backbuffer->Pitch;
+        }
     }
 }
 

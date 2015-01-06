@@ -13,7 +13,7 @@ struct Win32_Off_Screen_Buffer
 	 int Width;
 	 int Height;
 	 int Pitch;
-	 int BytesPerPixel = 4;
+	 int BytesPerPixel;
 };
 
 
