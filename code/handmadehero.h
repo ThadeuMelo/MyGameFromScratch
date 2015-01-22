@@ -196,8 +196,6 @@ struct game_state
     real32 tSine;
 };
 
-internal void GameUpdateAndRender(game_memory *Memory, game_input *Input, game_Off_Screen_Buffer *Buffer,
-                                  game_sound_output_buffer *SoundBuffer);
 
 /*
   NOTE(casey): Services that the platform layer provides to the game

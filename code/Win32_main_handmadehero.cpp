@@ -5,7 +5,13 @@
 
 
 #include "handmadehero.h"
-#include "handmadehero.cpp"
+
+#include <windows.h>
+#include <stdio.h>
+#include <malloc.h>
+#include <xinput.h>
+#include <dsound.h>
+
 #include "win32_handmade.h"
 
 global_variable Win32_Off_Screen_Buffer GlobalBackBuffer;
@@ -194,8 +200,8 @@ Win32LoadGameCode(void)
     // TODO(casey): Need to get the proper path here!
     // TODO(casey): Automatic determination of when updates are necessary.
     
-    CopyFile("handmade.dll", "handmade_temp.dll", FALSE);
-    Result.GameCodeDLL = LoadLibraryA("handmade_temp.dll");
+    CopyFile("c:\\handmadehero\\Handmadehero\\build\\handmadehero.dll", "c:\\handmadehero\\Handmadehero\\build\\handmade_temp.dll", FALSE);
+    Result.GameCodeDLL = LoadLibraryA("c:\\handmadehero\\Handmadehero\\build\\handmade_temp.dll");
     if(Result.GameCodeDLL)
     {
         Result.UpdateAndRender = (game_update_and_render *)
@@ -220,12 +226,13 @@ Win32LoadGameCode(void)
 internal void
 Win32UnloadGameCode(win32_game_code *GameCode)
 {
+	int a = 10;
+	int b = 20;
     if(GameCode->GameCodeDLL)
     {
         FreeLibrary(GameCode->GameCodeDLL);
         GameCode->GameCodeDLL = 0;
     }
-
     GameCode->IsValid = false;
     GameCode->UpdateAndRender = GameUpdateAndRenderStub;
     GameCode->GetSoundSamples = GameGetSoundSamplesStub;
@@ -945,8 +952,7 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
                         Buffer.Width = GlobalBackBuffer.Width; 
                         Buffer.Height = GlobalBackBuffer.Height;
                         Buffer.Pitch = GlobalBackBuffer.Pitch; 
-                        GameUpdateAndRender(&GameMemory, NewInput, &Buffer);
-						
+						Game.UpdateAndRender(&GameMemory, NewInput, &Buffer);
                         LARGE_INTEGER AudioWallClock = Win32GetWallClock();
                         real32 FromBeginToAudioSeconds = Win32GetSecondsElapsed(FlipWallClock, AudioWallClock);
 
@@ -1033,7 +1039,9 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
                             SoundBuffer.samplesPerSecond = soundOutput.samplesPerSecond;
                             SoundBuffer.sampleCount = BytesToWrite / soundOutput.bytesPerSample;
                             SoundBuffer.samples = Samples;
-                            GameGetSoundSamples(&GameMemory, &SoundBuffer);
+							
+							Game.GetSoundSamples(&GameMemory, &SoundBuffer);
+
 
 #if HANDMADE_INTERNAL
                             win32_debug_time_marker *Marker = &DebugTimeMarkers[DebugTimeMarkerIndex];

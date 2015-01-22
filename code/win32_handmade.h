@@ -1,10 +1,5 @@
 #if !defined(WIN32_HANDMADE_H)
 
-#include <windows.h>
-#include <stdio.h>
-#include <malloc.h>
-#include <xinput.h>
-#include <dsound.h>
 
 struct Win32_Off_Screen_Buffer
 {

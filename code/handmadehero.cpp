@@ -6,7 +6,8 @@ typedef unsigned long DWORD;
 
 
 
-internal void GameOutputSound(game_state *GameState, game_sound_output_buffer *SoundBuffer, int toneHz)
+internal void 
+GameOutputSound(game_state *GameState, game_sound_output_buffer *SoundBuffer, int toneHz)
 {
 		int16 toneVolume = 3000;
 		if (toneHz == 0)
@@ -41,6 +42,7 @@ RenderWeirdGradient(game_Off_Screen_Buffer *Buffer, int XOffset, int YOffset)
 			uint8 Green = 0 ;
 			uint8 Red = 0;
 			
+
 			if (X > Buffer->Width/2){
 				Blue = 0;
 				Red = (uint8)(X + XOffset);
