@@ -6,9 +6,8 @@ typedef unsigned long DWORD;
 
 
 
-internal void GameOutputSound(game_sound_output_buffer *SoundBuffer, int toneHz)
+internal void GameOutputSound(game_state *GameState, game_sound_output_buffer *SoundBuffer, int toneHz)
 {
-	local_persist real32 tSine;
 		int16 toneVolume = 3000;
 		if (toneHz == 0)
 		{
@@ -18,19 +17,12 @@ internal void GameOutputSound(game_sound_output_buffer *SoundBuffer, int toneHz)
 		int16 *sampleOut = (int16*)SoundBuffer->samples;
 		for (DWORD sampleIndex = 0; sampleIndex < (DWORD)SoundBuffer->sampleCount; ++sampleIndex)
 		{
-			real32 sineValue = sin(tSine);
+			real32 sineValue = sin(GameState->tSine);
 			int16 sampleValue = (int16)(sineValue * toneVolume);
 			*sampleOut++ = sampleValue;
 			*sampleOut++ = sampleValue;
-			tSine += 2.0f*Pi32*1.0f / (real32)wavePeriod;
+			GameState->tSine += 2.0f*Pi32*1.0f / (real32)wavePeriod;
 		}
-}
-
-internal void
-GameGetSoundSamples(game_memory *Memory, game_sound_output_buffer *SoundBuffer)
-{
-	game_state *GameState = (game_state *)Memory->PermanentStorage;
-	GameOutputSound(SoundBuffer, GameState->ToneHz);
 }
 
 
@@ -65,7 +57,7 @@ RenderWeirdGradient(game_Off_Screen_Buffer *Buffer, int XOffset, int YOffset)
 	}
 }
 
-internal void GameUpdateAndRender(game_memory *Memory, game_input *Input, game_Off_Screen_Buffer *Buffer)
+extern "C" GAME_UPDATE_AND_RENDER(GameUpdateAndRender)
 {
 
     Assert((&Input->Controllers[0].Terminator - &Input->Controllers[0].Buttons[0]) ==
@@ -77,11 +69,11 @@ internal void GameUpdateAndRender(game_memory *Memory, game_input *Input, game_O
     {
 		char *Filename = "test.in";
         
-        debug_read_file_result File = DEBUGPlatformReadEntireFile(Filename);
+        debug_read_file_result File = Memory->DEBUGPlatformReadEntireFile(Filename);
         if(File.Contents)
         {
-            DEBUGPlatformWriteEntireFile("test_out.out", File.ContentsSize, File.Contents);
-            DEBUGPlatformFreeFileMemory(File.Contents);
+            Memory->DEBUGPlatformWriteEntireFile("test_out.out", File.ContentsSize, File.Contents);
+            Memory->DEBUGPlatformFreeFileMemory(File.Contents);
         }
         GameState->ToneHz = 256;
 
@@ -138,3 +130,22 @@ internal void GameUpdateAndRender(game_memory *Memory, game_input *Input, game_O
 
 	RenderWeirdGradient(Buffer, GameState->BlueOffset, GameState->GreenOffset);
 }
+
+extern "C" GAME_GET_SOUND_SAMPLES(GameGetSoundSamples)
+{
+    game_state *GameState = (game_state *)Memory->PermanentStorage;
+    GameOutputSound(GameState, SoundBuffer, GameState->ToneHz);
+}
+
+#if HANDMADE_WIN32
+#include "windows.h"
+BOOL WINAPI DllMain(
+    _In_  HINSTANCE hinstDLL,
+    _In_  DWORD fdwReason,
+    _In_  LPVOID lpvReserved
+                    )
+{
+    return(TRUE);
+}
+
+#endif

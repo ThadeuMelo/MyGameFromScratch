@@ -35,6 +35,14 @@ global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
 #define DIRECT_SOUND_CREATE(name)_Check_return_ HRESULT WINAPI name(_In_opt_ LPCGUID pcGuidDevice, _Outptr_ LPDIRECTSOUND *ppDS, _Pre_null_ LPUNKNOWN pUnkOuter)
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
+DEBUG_PLATFORM_FREE_FILE_MEMORY(DEBUGPlatformFreeFileMemory)
+{
+    if(Memory)
+    {
+        VirtualFree(Memory, 0, MEM_RELEASE);
+    }
+}
+
 
 float platformImpl(char *value)
 {
@@ -123,15 +131,6 @@ DEBUGPlatformReadEntireFile(char *Filename)
     return(Result);
 }
 
-internal void
-DEBUGPlatformFreeFileMemory(void *Memory)
-{
-    if(Memory)
-    {
-        VirtualFree(Memory, 0, MEM_RELEASE);
-    }
-}
-
 internal bool32
 DEBUGPlatformWriteEntireFile(char *Filename, uint32 MemorySize, void *Memory)
 {
@@ -178,22 +177,59 @@ Win32GetSecondsElapsed(LARGE_INTEGER Start, LARGE_INTEGER End)
     return(Result);
 }
 
-/*internal ButtonActions WIN32_getButtonAction(DWORD wButtons)
+struct win32_game_code
 {
-	ButtonActions tempButtAct;
-	tempButtAct.Up 	=	(wButtons & XINPUT_GAMEPAD_DPAD_UP);
-	tempButtAct.Down = (wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
-	tempButtAct.Left = (wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
-	tempButtAct.Right = (wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
-	tempButtAct.ButA = (wButtons & XINPUT_GAMEPAD_A);
-	tempButtAct.ButB = (wButtons & XINPUT_GAMEPAD_B);
-	tempButtAct.ButX = (wButtons & XINPUT_GAMEPAD_X);
-	tempButtAct.ButY = (wButtons & XINPUT_GAMEPAD_Y);
-	tempButtAct.LeftSh = (wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
-	tempButtAct.RigtSh = (wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
-	return tempButtAct;
+    HMODULE GameCodeDLL;
+    game_update_and_render *UpdateAndRender;
+    game_get_sound_samples *GetSoundSamples;
+
+    bool32 IsValid;
+};
+
+internal win32_game_code
+Win32LoadGameCode(void)
+{
+    win32_game_code Result = {};
+
+    // TODO(casey): Need to get the proper path here!
+    // TODO(casey): Automatic determination of when updates are necessary.
+    
+    CopyFile("handmade.dll", "handmade_temp.dll", FALSE);
+    Result.GameCodeDLL = LoadLibraryA("handmade_temp.dll");
+    if(Result.GameCodeDLL)
+    {
+        Result.UpdateAndRender = (game_update_and_render *)
+            GetProcAddress(Result.GameCodeDLL, "GameUpdateAndRender");
+        
+        Result.GetSoundSamples = (game_get_sound_samples *)
+            GetProcAddress(Result.GameCodeDLL, "GameGetSoundSamples");
+
+        Result.IsValid = (Result.UpdateAndRender &&
+                          Result.GetSoundSamples);
+    }
+
+    if(!Result.IsValid)
+    {
+        Result.UpdateAndRender = GameUpdateAndRenderStub;
+        Result.GetSoundSamples = GameGetSoundSamplesStub;
+    }
+
+    return(Result);
 }
-*/
+
+internal void
+Win32UnloadGameCode(win32_game_code *GameCode)
+{
+    if(GameCode->GameCodeDLL)
+    {
+        FreeLibrary(GameCode->GameCodeDLL);
+        GameCode->GameCodeDLL = 0;
+    }
+
+    GameCode->IsValid = false;
+    GameCode->UpdateAndRender = GameUpdateAndRenderStub;
+    GameCode->GetSoundSamples = GameGetSoundSamplesStub;
+}
 
 internal void
 Win32ProcessPendingMessages(game_controller_input *KeyboardController)
@@ -726,6 +762,9 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
             game_memory GameMemory = {};
             GameMemory.PermanentStorageSize = Megabytes(64);
             GameMemory.TransientStorageSize = Gigabytes(4);
+			GameMemory.DEBUGPlatformFreeFileMemory = DEBUGPlatformFreeFileMemory;
+            GameMemory.DEBUGPlatformReadEntireFile = DEBUGPlatformReadEntireFile;
+            GameMemory.DEBUGPlatformWriteEntireFile = DEBUGPlatformWriteEntireFile;
 			
 			            // TODO(casey): Handle various memory footprints (USING SYSTEM METRICS)
             uint64 TotalSize = GameMemory.PermanentStorageSize + GameMemory.TransientStorageSize;
@@ -755,10 +794,19 @@ LRESULT Win32CreateInitialWindow(HINSTANCE Instance){
 				int64 LastCycleCount =  __rdtsc();
 				
 				DWORD LastPlayCursor = 0;
-
+				
+                win32_game_code Game = Win32LoadGameCode();
+                uint32 LoadCounter = 0;
+				
 				while (GlobalRunning)
 				{
-
+				
+				     if(LoadCounter++ > 120)
+                    {
+                        Win32UnloadGameCode(&Game);
+                        Game = Win32LoadGameCode();
+                        LoadCounter = 0;
+                    }
 					
 					begCounter.QuadPart;
                     game_controller_input *OldKeyboardController = GetController(OldInput, 0);
